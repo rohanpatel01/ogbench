@@ -36,6 +36,7 @@ python generate_locomaze.py --env_name=antmaze-giant-v0 --save_path=data/antmaze
 # antmaze-teleport-navigate-v0
 python generate_locomaze.py --env_name=antmaze-teleport-v0 --save_path=data/antmaze-teleport-navigate-v0.npz --dataset_type=navigate --num_episodes=1000 --max_episode_steps=1001 --restore_path=experts/ant --restore_epoch=400000
 # antmaze-medium-stitch-v0
+# TODO
 python generate_locomaze.py --env_name=antmaze-medium-v0 --save_path=data/antmaze-medium-stitch-v0.npz --dataset_type=stitch --num_episodes=5000 --max_episode_steps=201 --restore_path=experts/ant --restore_epoch=400000
 # antmaze-large-stitch-v0
 python generate_locomaze.py --env_name=antmaze-large-v0 --save_path=data/antmaze-large-stitch-v0.npz --dataset_type=stitch --num_episodes=5000 --max_episode_steps=201 --restore_path=experts/ant --restore_epoch=400000

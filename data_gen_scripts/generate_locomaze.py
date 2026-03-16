@@ -6,24 +6,25 @@ from collections import defaultdict
 import gymnasium
 import numpy as np
 from absl import app, flags
-from agents import SACAgent
+from impls.agents import SACAgent
 from tqdm import trange
-from utils.evaluation import supply_rng
-from utils.flax_utils import restore_agent
+from impls.utils.evaluation import supply_rng
+from impls.utils.flax_utils import restore_agent
 
 import ogbench.locomaze  # noqa
 
 FLAGS = flags.FLAGS
 
+# Note: I changed the default values here to match the ones OGBench used to generate their data for visual-antmaze-medium-stitch-v0
 flags.DEFINE_integer('seed', 0, 'Random seed.')
-flags.DEFINE_string('env_name', 'antmaze-large-v0', 'Environment name.')
-flags.DEFINE_string('dataset_type', 'navigate', 'Dataset type.')
+flags.DEFINE_string('env_name', 'visual-antmaze-medium', 'Environment name.')          # visual-antmaze-medium
+flags.DEFINE_string('dataset_type', 'stitch', 'Dataset type.')                                  # stitch
 flags.DEFINE_string('restore_path', 'experts/ant', 'Expert agent restore path.')
 flags.DEFINE_integer('restore_epoch', 400000, 'Expert agent restore epoch.')
 flags.DEFINE_string('save_path', None, 'Save path.')
 flags.DEFINE_float('noise', 0.2, 'Gaussian action noise level.')
-flags.DEFINE_integer('num_episodes', 1000, 'Number of episodes.')
-flags.DEFINE_integer('max_episode_steps', 1001, 'Maximum number of steps in an episode.')
+flags.DEFINE_integer('num_episodes', 5, 'Number of episodes.')                               # 5000     # TODO: change back once we get distractions working correctly
+flags.DEFINE_integer('max_episode_steps', 200, 'Maximum number of steps in an episode.')        # 200
 
 
 def main(_):
@@ -32,6 +33,13 @@ def main(_):
     # 'navigate': Repeatedly reach randomly sampled goals in a single episode.
     # 'stitch': Reach a nearby goal that is 4 cells away and stay there.
     # 'explore': Repeatedly follow random directions sampled every 10 steps.
+
+    # TODO: Read contents of command line and populate flags based on what we want
+    # For now I'll just hardcode the flags above just to get progress on adding distractions and such to this dataset
+
+
+    print("Starting main")
+
 
     # Initialize environment.
     env = gymnasium.make(
