@@ -6,3 +6,7 @@ dist/
 .DS_Store
 .idea/
 .ruff_cache/
+
+
+data_gen_scripts/data
+data_gen_scripts/exp

@@ -55,7 +55,15 @@ def main(_):
 
     # Set up environment and dataset.
     config = FLAGS.agent
-    env, train_dataset, val_dataset = make_env_and_datasets(FLAGS.env_name, frame_stack=config['frame_stack'])
+    # env, train_dataset, val_dataset = make_env_and_datasets(FLAGS.env_name, frame_stack=config['frame_stack'])
+
+    # Replace how they get their dataset to use ours
+    env, _, _ = make_env_and_datasets(FLAGS.env_name, frame_stack=config['frame_stack'])
+
+    data_train = np.load(FLAGS.dataset_path_train)
+    data_val = np.load(FLAGS.dataset_path_val)
+    train_dataset = dict(data_train)   # keys: observations, actions, rewards, terminals, etc.
+    val_dataset = dict(data_val)           # or split off a slice if you want validation
 
     dataset_class = {
         'GCDataset': GCDataset,

@@ -3,13 +3,16 @@ import urllib.request
 
 import gymnasium
 import numpy as np
+from gymnasium.spaces import Box
+from PIL import Image
 from tqdm import tqdm
 
 from ogbench.relabel_utils import add_oracle_reps, relabel_dataset
 
-DEFAULT_DATASET_DIR = '~/.ogbench/data'
-DATASET_URL = 'https://rail.eecs.berkeley.edu/datasets/ogbench'
 
+
+DEFAULT_DATASET_DIR = '/work/10993/rohanpatel01/vista/ogbench/data_gen_scripts/data' # Changed to match where my data is.   Orig: ~/.ogbench/data
+DATASET_URL = 'https://rail.eecs.berkeley.edu/datasets/ogbench'
 
 def load_dataset(dataset_path, ob_dtype=np.float32, action_dtype=np.float32, compact_dataset=False, add_info=False):
     """Load OGBench dataset.
@@ -114,6 +117,7 @@ def download_datasets(dataset_names, dataset_dir=DEFAULT_DATASET_DIR):
         dataset_file_names.append(f'{dataset_name}-val.npz')
     for dataset_file_name in dataset_file_names:
         dataset_file_path = os.path.join(dataset_dir, dataset_file_name)
+        # breakpoint()
         if not os.path.exists(dataset_file_path):
             dataset_url = f'{DATASET_URL}/{dataset_file_name}'
             print('Downloading dataset from:', dataset_url)
@@ -160,6 +164,7 @@ def make_env_and_datasets(
     splits = dataset_name.split('-')
     dataset_add_info = add_info
     env = cur_env
+    # breakpoint()    #TODO
     if 'singletask' in splits:
         # Single-task environment.
         pos = splits.index('singletask')
@@ -233,3 +238,177 @@ def make_env_and_datasets(
         return train_dataset, val_dataset
     else:
         return env, train_dataset, val_dataset
+
+
+class ImageDistractionWrapper(gymnasium.Wrapper):
+    """Wrapper that adds distracting video from image sequences placed beside the observation.
+
+    Loads image sequences from folders inside distracting_images/, scales them to match the
+    observation size, and concatenates them horizontally (original | distraction). The
+    distraction advances one frame per environment step, creating a video effect.
+    """
+
+    def __init__(
+        self,
+        env,
+        distracting_images_dir=None,
+        position='right',
+        difficulty='easy',
+
+    ):
+        """Initialize the wrapper.
+
+        Args:
+            env: Environment with visual (image) observations.
+            distracting_images_dir: Path to the distracting_images folder. Defaults to
+                <package_root>/distracting_images.
+            folder_names: List of subfolder names to use (e.g. ['bike-packing', 'bus']).
+                If None, discovers all subfolders and randomly picks one per episode.
+            position: Where to place the distraction: 'right' or 'left'.
+            difficulty: Difficulty of the distraction: 'easy', 'medium', or 'hard'.
+        """
+        super().__init__(env)
+        if distracting_images_dir is None:
+            pkg_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            distracting_images_dir = os.path.join(pkg_root, 'distracting_images')
+            
+        self._folder_names_difficulty_map={
+            'easy': ['bike-packing', 'bear', 'blackswan'],
+            'medium': [ "bear", "bus", "crossing", "dogs-scale", "hike", "koala", "mallard-water", "parkour", "scooter-gray", "surf",
+                        "bike-packing", "camel", "dance-jump", "drift-chicane", "hockey", "lab-coat", "mbike-trick", "pigs", "sheep", "swing",
+            ],
+            'hard': [   "bear", "bus", "crossing", "dogs-scale", "hike", "koala", "mallard-water", "parkour", "scooter-gray", "surf",
+                        "bike-packing", "camel", "dance-jump", "drift-chicane", "hockey", "lab-coat", "mbike-trick", "pigs", "sheep", "swing",
+                        "blackswan", "car-roundabout", "dance-twirl", "drift-straight", "horsejump-high", "lady-running", "miami-surf", "planes-water", "shooting", "tennis",
+                        "bmx-bumps", "car-shadow", "dancing", "drift-turn", "horsejump-low", "libby", "motocross-bumps", "rallye", "skate-park", "tractor-sand",
+                        "bmx-trees", "car-turn", "disc-jockey", "drone", "india", "lindy-hop", "motocross-jump", "rhino", "snowboard", "train",
+                        "boat", "cat-girl", "dog", "elephant", "judo", "loading", "motorbike", "rollerblade", "soapbox", "tuk-tuk",
+                        "boxing-fisheye", "classic-car", "dog-agility", "flamingo", "kid-football", "longboard", "night-race", "schoolgirls", "soccerball", "upside-down",
+                        "breakdance", "color-run", "dog-gooses", "goat", "kite-surf", "lucia", "paragliding", "scooter-black", "stroller", "varanus-cage",
+                        "breakdance-flare", "cows", "dogs-jump", "gold-fish", "kite-walk", "mallard-fly", "paragliding-launch", "scooter-board", "stunt", "walking"
+            ]
+        }
+        self._distracting_images_dir = os.path.expanduser(distracting_images_dir)
+        self._folder_names = self._folder_names_difficulty_map[difficulty]
+        self._position = position
+        self._image_sequences = {}  # folder_name -> list of (H, W, 3) arrays
+        self._current_folder = None
+        self._current_frame_idx = 0
+        self._playback_direction = 1  # +1 forward, -1 backward
+        self._ob_shape = None
+        self._observation_space = None
+        for folder_name in self._folder_names:
+            self._load_sequence(folder_name)
+
+    def _discover_folders(self):
+        """Discover available subfolders in distracting_images_dir."""
+        if not os.path.isdir(self._distracting_images_dir):
+            return []
+        folders = []
+        for name in sorted(os.listdir(self._distracting_images_dir)):
+            path = os.path.join(self._distracting_images_dir, name)
+            if os.path.isdir(path):
+                folders.append(name)
+        return folders
+
+    def _load_sequence(self, folder_name):
+        """Load image sequence from a folder. Returns list of (H, W, 3) uint8 arrays."""
+        if folder_name in self._image_sequences:
+            return self._image_sequences[folder_name]
+        folder_path = os.path.join(self._distracting_images_dir, folder_name)
+        if not os.path.isdir(folder_path):
+            raise FileNotFoundError(f'Distraction folder not found: {folder_path}')
+        image_extensions = {'.jpg', '.jpeg', '.png', '.bmp'}
+        files = []
+        for f in os.listdir(folder_path):
+            ext = os.path.splitext(f)[1].lower()
+            if ext in image_extensions:
+                files.append(f)
+        files.sort()
+        if not files:
+            raise ValueError(f'No images found in {folder_path}')
+        frames = []
+        for f in files:
+            path = os.path.join(folder_path, f)
+            img = Image.open(path).convert('RGB')
+            frames.append(np.array(img))
+        self._image_sequences[folder_name] = frames
+        return frames
+
+    def _get_distraction_frame(self, target_h, target_w):
+        """Get current distraction frame scaled to (target_h, target_w, 3)."""
+        if self._current_folder is None:
+            return None
+        frames = self._image_sequences[self._current_folder]
+        frame = frames[self._current_frame_idx]
+        img = Image.fromarray(frame)
+        img = img.resize((target_w, target_h), Image.Resampling.LANCZOS)
+        return np.array(img)
+
+    def _add_distraction(self, ob):
+        """Concatenate distraction video to the side of the observation."""
+        if not isinstance(ob, np.ndarray) or ob.ndim < 2:
+            return ob
+        if ob.dtype != np.uint8 or ob.shape[-1] not in (3, 6):
+            return ob
+        h, w = ob.shape[:2]
+        n_channels = ob.shape[-1]
+        # Distraction is always 3-channel; we scale to match observation size
+        dist_frame = self._get_distraction_frame(h, w)
+        if dist_frame is None:
+            return ob
+        if n_channels == 6:
+            dist_frame = np.concatenate([dist_frame, dist_frame], axis=-1)
+        if self._position == 'right':
+            ob = np.concatenate([ob, dist_frame], axis=1)
+        else:
+            ob = np.concatenate([dist_frame, ob], axis=1)
+        return ob
+
+    def _update_observation_space(self, ob_shape):
+        """Update observation space to reflect new width."""
+        if self._ob_shape == ob_shape:
+            return
+        self._ob_shape = ob_shape
+        h, w, c = ob_shape
+        new_w = 2 * w
+        self._observation_space = Box(low=0, high=255, shape=(h, new_w, c), dtype=np.uint8)
+
+    def reset(self, *args, **kwargs):
+        folders = self._folder_names if self._folder_names else self._discover_folders()
+        if not folders:
+            raise ValueError(
+                f'No distraction folders found in {self._distracting_images_dir}. '
+                'Set folder_names or add subfolders with images.'
+            )
+        folder_idx = self.env.np_random.integers(0, len(folders))
+        self._current_folder = folders[folder_idx]
+        frames = self._load_sequence(self._current_folder)
+        self._current_frame_idx = int(self.env.np_random.integers(0, len(frames)))
+        self._playback_direction = 1
+        ob, info = self.env.reset(*args, **kwargs)
+        if isinstance(ob, np.ndarray) and ob.ndim >= 2 and ob.dtype == np.uint8:
+            self._update_observation_space(ob.shape)
+            ob = self._add_distraction(ob)
+        return ob, info
+
+    def step(self, action):
+        ob, reward, terminated, truncated, info = self.env.step(action)
+        if self._current_folder is not None:
+            n = len(self._image_sequences[self._current_folder])
+            self._current_frame_idx += self._playback_direction
+            if self._current_frame_idx >= n:
+                self._current_frame_idx = n - 2
+                self._playback_direction = -1
+            elif self._current_frame_idx < 0:
+                self._current_frame_idx = 1
+                self._playback_direction = 1
+        if isinstance(ob, np.ndarray) and ob.ndim >= 2 and ob.dtype == np.uint8:
+            ob = self._add_distraction(ob)
+        return ob, reward, terminated, truncated, info
+
+    @property
+    def observation_space(self):
+        if self._observation_space is not None:
+            return self._observation_space
+        return self.env.observation_space

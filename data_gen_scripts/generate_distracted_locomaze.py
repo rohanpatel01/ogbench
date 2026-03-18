@@ -13,6 +13,8 @@ from utils.flax_utils import restore_agent
 
 import ogbench.locomaze  # noqa
 
+from ogbench.utils import ImageDistractionWrapper
+
 FLAGS = flags.FLAGS
 
 # Note: I changed the default values here to match the ones OGBench used to generate their data for visual-antmaze-medium-stitch-v0
@@ -26,6 +28,11 @@ flags.DEFINE_float('noise', 0.2, 'Gaussian action noise level.')
 flags.DEFINE_integer('num_episodes', 5000, 'Number of episodes.')                               # 5000     # TODO: change back once we get distractions working correctly
 flags.DEFINE_integer('max_episode_steps', 200, 'Maximum number of steps in an episode.')        # 200
 
+# Flags for distraction wrapper
+flags.DEFINE_string('distraction', 'none', 'Distraction wrapper: none, circle, or image.')
+flags.DEFINE_string('distraction_images_dir', None, 'Path to distracting_images folder (image wrapper). Default: <repo>/distracting_images.')
+flags.DEFINE_string('distraction_difficulty', 'easy', 'Difficulty of the distraction: easy, medium, or hard.')
+
 
 def main(_):
     assert FLAGS.dataset_type in ['path', 'navigate', 'stitch', 'explore']
@@ -37,14 +44,10 @@ def main(_):
     # TODO: Read contents of command line and populate flags based on what we want
     # For now I'll just hardcode the flags above just to get progress on adding distractions and such to this dataset
 
-
     print("Starting main")
     print("env_name: ", FLAGS.env_name)
     print("dataset_type: ", FLAGS.dataset_type)
     print("num_episodes: ", FLAGS.num_episodes)
-
-
-
 
     # Initialize environment.
     env = gymnasium.make(
@@ -52,7 +55,30 @@ def main(_):
         terminate_at_goal=False,
         max_episode_steps=FLAGS.max_episode_steps,
     )
+
     ob_dim = env.observation_space.shape[0]
+
+    # Put Distraction wrapper over environment
+    if FLAGS.distraction != 'none':
+        if 'visual' not in FLAGS.env_name:
+            raise ValueError(
+                f'Distraction wrappers require a visual environment (e.g. visual-cube-single-v0). '
+                f'Got env_name={FLAGS.env_name}.'
+            )
+        if FLAGS.distraction == 'image':
+            distracting_dir = FLAGS.distraction_images_dir
+            if distracting_dir is None:
+                distracting_dir = pathlib.Path(__file__).resolve().parent.parent / 'distracting_images' # default distraction dir?
+            
+            # This is where we actually create the env with the distractions.
+            # Need to look into this and see if this is doing what we want
+            env = ImageDistractionWrapper(
+                env,
+                distracting_images_dir=str(distracting_dir),
+                difficulty=FLAGS.distraction_difficulty,
+            )
+
+
 
     # Initialize oracle agent.
     if 'point' in FLAGS.env_name:

@@ -46,7 +46,14 @@ def visualize_trajs(env_name, trajs):
         return None
 
     fig.tight_layout()
+    
+    # canvas.draw()
+    # out_image = np.frombuffer(canvas.tostring_rgb(), dtype='uint8')
+    # out_image = out_image.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+    
     canvas.draw()
-    out_image = np.frombuffer(canvas.tostring_rgb(), dtype='uint8')
-    out_image = out_image.reshape(fig.canvas.get_width_height()[::-1] + (3,))
+    out_image = np.frombuffer(canvas.buffer_rgba(), dtype='uint8')
+    out_image = out_image.reshape(canvas.get_width_height()[::-1] + (4,))
+    out_image = out_image[:, :, :3]  # Drop alpha channel to get RGB
+    
     return out_image

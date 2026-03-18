@@ -19,7 +19,7 @@ from viz_utils import visualize_trajs
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('run_group', 'Debug', 'Run group.')
+flags.DEFINE_string('run_group', 'ogbench', 'Run group.')       # ogbench
 flags.DEFINE_integer('seed', 0, 'Random seed.')
 flags.DEFINE_string('env_name', 'online-ant-xy-v0', 'Environment name.')
 flags.DEFINE_string('save_dir', 'exp/', 'Save directory.')
