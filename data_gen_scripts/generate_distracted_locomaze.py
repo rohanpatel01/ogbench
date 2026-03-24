@@ -23,7 +23,6 @@ flags.DEFINE_string('env_name', 'visual-antmaze-medium', 'Environment name.')   
 flags.DEFINE_string('dataset_type', 'stitch', 'Dataset type.')                                  # stitch
 flags.DEFINE_string('restore_path', 'experts/ant', 'Expert agent restore path.')
 flags.DEFINE_integer('restore_epoch', 400000, 'Expert agent restore epoch.')
-flags.DEFINE_string('save_path', None, 'Save path.')
 flags.DEFINE_float('noise', 0.2, 'Gaussian action noise level.')
 flags.DEFINE_integer('num_episodes', 5000, 'Number of episodes.')                               # 5000     # TODO: change back once we get distractions working correctly
 flags.DEFINE_integer('max_episode_steps', 200, 'Maximum number of steps in an episode.')        # 200
@@ -32,6 +31,11 @@ flags.DEFINE_integer('max_episode_steps', 200, 'Maximum number of steps in an ep
 flags.DEFINE_string('distraction', 'none', 'Distraction wrapper: none, circle, or image.')
 flags.DEFINE_string('distraction_images_dir', None, 'Path to distracting_images folder (image wrapper). Default: <repo>/distracting_images.')
 flags.DEFINE_string('distraction_difficulty', 'easy', 'Difficulty of the distraction: easy, medium, or hard.')
+flags.DEFINE_string('save_dir', None, 'Save path.')
+flags.DEFINE_integer('save_period', 1000000, 'Defines after how many episodes generated to save them')
+flags.DEFINE_string('save_file_name', 'none', 'Name of the .npz file that will contain the generated data')
+
+
 
 
 def main(_):
@@ -58,7 +62,7 @@ def main(_):
 
     ob_dim = env.observation_space.shape[0]
 
-    # Put Distraction wrapper over environment
+    distracted_envs = None
     if FLAGS.distraction != 'none':
         if 'visual' not in FLAGS.env_name:
             raise ValueError(
@@ -69,16 +73,24 @@ def main(_):
             distracting_dir = FLAGS.distraction_images_dir
             if distracting_dir is None:
                 distracting_dir = pathlib.Path(__file__).resolve().parent.parent / 'distracting_images' # default distraction dir?
+            else:
+                # Setup Distracted environments we'll use during data collection
+                distracted_envs = {
+                    'left': ImageDistractionWrapper(
+                                env,
+                                distracting_images_dir='/work/10993/rohanpatel01/vista/DAVIS/JPEGImages/480p/',
+                                difficulty=FLAGS.distraction_difficulty,
+                                specific_distractor='bear'
+                            ),
+
+                    'right': ImageDistractionWrapper(
+                                env,
+                                distracting_images_dir='/work/10993/rohanpatel01/vista/DAVIS/JPEGImages/480p/',
+                                difficulty=FLAGS.distraction_difficulty,
+                                specific_distractor='dog'
+                            )
+                }
             
-            # This is where we actually create the env with the distractions.
-            # Need to look into this and see if this is doing what we want
-            env = ImageDistractionWrapper(
-                env,
-                distracting_images_dir=str(distracting_dir),
-                difficulty=FLAGS.distraction_difficulty,
-            )
-
-
 
     # Initialize oracle agent.
     if 'point' in FLAGS.env_name:
@@ -176,8 +188,41 @@ def main(_):
         else:
             raise ValueError(f'Unsupported dataset_type: {FLAGS.dataset_type}')
 
-        ob, _ = env.reset(options=dict(task_info=dict(init_ij=init_ij, goal_ij=goal_ij)))
 
+        # Use environment with specific distractor video based on starting location of agent (init_ij)
+        # middle_width = maze_map.shape[1] // 2
+
+        maze_height = maze_map.shape[0]
+        maze_width = maze_map.shape[1]
+
+        # print("Maze map shape: ", maze_map.shape)
+
+        # Add distractor based on if the starting location is above or below the main diagonal
+        init_row = init_ij[0]
+        init_col = init_ij[1]
+
+        norm_row = init_row / maze_height
+        norm_col = init_col / maze_width
+
+        # print("###")
+        unique_distractor = 'left' if norm_col >= norm_row else 'right'
+        # print("Episode: ", ep_idx)
+        # print("init_row: ", init_row)
+        # print("init_col: ", init_col)
+        
+        # print("norm_col: ", norm_col)
+        # print("norm_row: ", norm_row)
+        # print("unique_distractor: ", unique_distractor)
+
+        # print("maze_height: ", maze_height)
+        # print("maze_width: ", maze_width)
+        # print("###")
+
+
+        env = distracted_envs[unique_distractor]
+
+        ob, _ = env.reset(options=dict(task_info=dict(init_ij=init_ij, goal_ij=goal_ij)))
+        
         done = False
         step = 0
 
@@ -225,11 +270,23 @@ def main(_):
         total_steps += step
         if ep_idx < num_train_episodes:
             total_train_steps += step
+        
 
+        # See if we should periodically save the dataset (also save the dataset in an outer folder with num episodes)
+        if (ep_idx % FLAGS.save_period == 0):
+            save_data('intermediate_save_' + str(ep_idx) + '/', dataset, total_train_steps)
+
+
+    # Save one final time with all data
+    save_data('final_save_' + str(ep_idx) + '/', dataset, total_train_steps)
     print('Total steps:', total_steps)
 
-    train_path = FLAGS.save_path
-    val_path = FLAGS.save_path.replace('.npz', '-val.npz')
+
+def save_data(save_subfolder_name: str, dataset, total_train_steps):
+    train_path = FLAGS.save_dir + save_subfolder_name + FLAGS.save_file_name
+    val_path = FLAGS.save_dir + save_subfolder_name + FLAGS.save_file_name.replace('.npz', '-val.npz')
+    
+
     pathlib.Path(train_path).parent.mkdir(parents=True, exist_ok=True)
 
     # Split the dataset into training and validation sets.
@@ -247,6 +304,9 @@ def main(_):
 
     for path, dataset in [(train_path, train_dataset), (val_path, val_dataset)]:
         np.savez_compressed(path, **dataset)
+
+
+
 
 
 if __name__ == '__main__':

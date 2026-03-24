@@ -10,3 +10,11 @@ dist/
 
 data_gen_scripts/data
 data_gen_scripts/exp
+launch_scripts/trajectory_videos/
+launch_scripts/hiql_train.*
+
+*.npz
+*.pkl
+*.json
+*.csv
+*.mp4

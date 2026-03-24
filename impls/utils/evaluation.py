@@ -71,6 +71,7 @@ def evaluate(
         should_render = i >= num_eval_episodes
 
         observation, info = env.reset(options=dict(task_id=task_id, render_goal=should_render))
+        # breakpoint()
         goal = info.get('goal')
         goal_frame = info.get('goal_rendered')
         done = False

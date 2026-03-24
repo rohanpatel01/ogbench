@@ -254,6 +254,7 @@ class ImageDistractionWrapper(gymnasium.Wrapper):
         distracting_images_dir=None,
         position='right',
         difficulty='easy',
+        specific_distractor=None,
 
     ):
         """Initialize the wrapper.
@@ -271,7 +272,7 @@ class ImageDistractionWrapper(gymnasium.Wrapper):
         if distracting_images_dir is None:
             pkg_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
             distracting_images_dir = os.path.join(pkg_root, 'distracting_images')
-            
+
         self._folder_names_difficulty_map={
             'easy': ['bike-packing', 'bear', 'blackswan'],
             'medium': [ "bear", "bus", "crossing", "dogs-scale", "hike", "koala", "mallard-water", "parkour", "scooter-gray", "surf",
@@ -289,7 +290,12 @@ class ImageDistractionWrapper(gymnasium.Wrapper):
             ]
         }
         self._distracting_images_dir = os.path.expanduser(distracting_images_dir)
-        self._folder_names = self._folder_names_difficulty_map[difficulty]
+
+        if specific_distractor is None:
+            self._folder_names = self._folder_names_difficulty_map[difficulty]
+        else:
+            self._folder_names = [specific_distractor]
+
         self._position = position
         self._image_sequences = {}  # folder_name -> list of (H, W, 3) arrays
         self._current_folder = None
@@ -390,6 +396,11 @@ class ImageDistractionWrapper(gymnasium.Wrapper):
         if isinstance(ob, np.ndarray) and ob.ndim >= 2 and ob.dtype == np.uint8:
             self._update_observation_space(ob.shape)
             ob = self._add_distraction(ob)
+
+        # Added this so during evaluation we also apply distraction to goal
+        if 'goal' in info and isinstance(info['goal'], np.ndarray):
+            info['goal'] = self._add_distraction(info['goal'])
+            
         return ob, info
 
     def step(self, action):

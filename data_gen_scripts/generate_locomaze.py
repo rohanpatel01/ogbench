@@ -27,6 +27,14 @@ flags.DEFINE_integer('num_episodes', 5000, 'Number of episodes.')               
 flags.DEFINE_integer('max_episode_steps', 200, 'Maximum number of steps in an episode.')        # 200
 
 
+flags.DEFINE_string('save_dir', None, 'Save path.')
+flags.DEFINE_integer('save_period', 1000000, 'Defines after how many episodes generated to save them')
+flags.DEFINE_string('save_file_name', 'none', 'Name of the .npz file that will contain the generated data')
+
+
+
+
+
 def main(_):
     assert FLAGS.dataset_type in ['path', 'navigate', 'stitch', 'explore']
     # 'path': Reach a single goal and stay there.
@@ -200,10 +208,41 @@ def main(_):
         if ep_idx < num_train_episodes:
             total_train_steps += step
 
+        # See if we should periodically save the dataset (also save the dataset in an outer folder with num episodes)
+        if (ep_idx % FLAGS.save_period == 0):
+            save_data('intermediate_save_' + str(ep_idx) + '/', dataset, total_train_steps)
+
+    # Save one final time with all data
+    save_data('final_save_' + str(ep_idx) + '/', dataset, total_train_steps)
     print('Total steps:', total_steps)
 
-    train_path = FLAGS.save_path
-    val_path = FLAGS.save_path.replace('.npz', '-val.npz')
+    # train_path = FLAGS.save_path
+    # val_path = FLAGS.save_path.replace('.npz', '-val.npz')
+    # pathlib.Path(train_path).parent.mkdir(parents=True, exist_ok=True)
+
+    # # Split the dataset into training and validation sets.
+    # train_dataset = {}
+    # val_dataset = {}
+    # for k, v in dataset.items():
+    #     if 'observations' in k and v[0].dtype == np.uint8:
+    #         dtype = np.uint8
+    #     elif k == 'terminals':
+    #         dtype = bool
+    #     else:
+    #         dtype = np.float32
+    #     train_dataset[k] = np.array(v[:total_train_steps], dtype=dtype)
+    #     val_dataset[k] = np.array(v[total_train_steps:], dtype=dtype)
+
+    # for path, dataset in [(train_path, train_dataset), (val_path, val_dataset)]:
+    #     np.savez_compressed(path, **dataset)
+
+
+
+def save_data(save_subfolder_name: str, dataset, total_train_steps):
+    train_path = FLAGS.save_dir + save_subfolder_name + FLAGS.save_file_name
+    val_path = FLAGS.save_dir + save_subfolder_name + FLAGS.save_file_name.replace('.npz', '-val.npz')
+    
+
     pathlib.Path(train_path).parent.mkdir(parents=True, exist_ok=True)
 
     # Split the dataset into training and validation sets.
@@ -221,6 +260,8 @@ def main(_):
 
     for path, dataset in [(train_path, train_dataset), (val_path, val_dataset)]:
         np.savez_compressed(path, **dataset)
+
+
 
 
 if __name__ == '__main__':

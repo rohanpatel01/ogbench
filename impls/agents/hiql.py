@@ -35,6 +35,7 @@ class HIQLAgent(flax.struct.PyTreeNode):
         """
         (next_v1_t, next_v2_t) = self.network.select('target_value')(batch['next_observations'], batch['value_goals'])
         next_v_t = jnp.minimum(next_v1_t, next_v2_t)
+        # breakpoint()
         q = batch['rewards'] + self.config['discount'] * batch['masks'] * next_v_t
 
         (v1_t, v2_t) = self.network.select('target_value')(batch['observations'], batch['value_goals'])

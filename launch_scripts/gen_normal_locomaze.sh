@@ -1,15 +1,12 @@
 #!bin/bash
 
 export PYTHONPATH=$PYTHONPATH:/work/10993/rohanpatel01/vista/ogbench/impls/
-# export PYTHONPATH=$PYTHONPATH:/work/10993/rohanpatel01/vista/ogbench/ogbench/
 export PYTHONPATH=$PYTHONPATH:/work/10993/rohanpatel01/vista/ogbench/
+export MUJOCO_GL=egl
 
 
-export MUJOCO_GL=egl 
-
-
-SAVE_DIR=data/
-SAVE_FILE_NAME=visual-antmaze-medium-stitch-v0-distracted.npz
+SAVE_DIR=undistracted_data/
+SAVE_FILE_NAME=visual-antmaze-medium-stitch-v0.npz
 ENV_NAME=visual-antmaze-medium-v0
 NUM_EPISODES=5000
 SAVE_PERIOD=500
@@ -19,22 +16,16 @@ RESTORE_PATH=/work/10993/rohanpatel01/vista/ogbench/impls/data_gen_scripts/exp/O
 RESTORE_EPOCH=1000000
 
 
-DISTRACTION_IMAGES_DIR=/work/10993/rohanpatel01/vista/DAVIS/JPEGImages/480p
-
 pwd
 cd ../impls/data_gen_scripts
 
-python generate_distracted_locomaze.py\
+python generate_locomaze.py\
     --env_name=$ENV_NAME\
     --dataset_type=stitch\
     --num_episodes=$NUM_EPISODES\
     --max_episode_steps=$MAX_EPISODE_STEPS\
     --restore_path=$RESTORE_PATH\
     --restore_epoch=$RESTORE_EPOCH\
-    --distraction=image\
-    --distraction_difficulty=easy\
-    --distraction_images_dir=$DISTRACTION_IMAGES_DIR\
     --save_dir=$SAVE_DIR\
     --save_period=$SAVE_PERIOD\
     --save_file_name=$SAVE_FILE_NAME
-

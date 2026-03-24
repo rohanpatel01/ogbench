@@ -17,9 +17,12 @@ from utils.evaluation import evaluate
 from utils.flax_utils import restore_agent, save_agent
 from utils.log_utils import CsvLogger, get_exp_name, get_flag_dict, get_wandb_video, setup_wandb
 
+from ogbench.utils import ImageDistractionWrapper
+
+
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('run_group', 'Debug', 'Run group.')
+flags.DEFINE_string('run_group', 'ogbench', 'Run group.')
 flags.DEFINE_integer('seed', 0, 'Random seed.')
 flags.DEFINE_string('env_name', 'antmaze-large-navigate-v0', 'Environment (dataset) name.')
 flags.DEFINE_string('save_dir', 'exp/', 'Save directory.')
@@ -42,6 +45,13 @@ flags.DEFINE_integer('eval_on_cpu', 1, 'Whether to evaluate on CPU.')
 config_flags.DEFINE_config_file('agent', 'agents/gciql.py', lock_config=False)
 
 
+flags.DEFINE_string('dataset_path_train', None, 'Path to dataset for train.')
+flags.DEFINE_string('dataset_path_val', None, 'Path to dataset for val.')
+flags.DEFINE_integer('using_distractions_dataset', 0, 'Determines whether we use the distraction env or normal env')
+
+
+
+
 def main(_):
     # Set up logger.
     exp_name = get_exp_name(FLAGS.seed)
@@ -55,15 +65,34 @@ def main(_):
 
     # Set up environment and dataset.
     config = FLAGS.agent
-    # env, train_dataset, val_dataset = make_env_and_datasets(FLAGS.env_name, frame_stack=config['frame_stack'])
 
-    # Replace how they get their dataset to use ours
-    env, _, _ = make_env_and_datasets(FLAGS.env_name, frame_stack=config['frame_stack'])
+    if ((FLAGS.dataset_path_train) and (FLAGS.dataset_path_val)): # Use our dataset for training
+        print("Using specified data")
+        env, _, _ = make_env_and_datasets(FLAGS.env_name, frame_stack=config['frame_stack'], dataset_path=FLAGS.dataset_path_train)
 
-    data_train = np.load(FLAGS.dataset_path_train)
-    data_val = np.load(FLAGS.dataset_path_val)
-    train_dataset = dict(data_train)   # keys: observations, actions, rewards, terminals, etc.
-    val_dataset = dict(data_val)           # or split off a slice if you want validation
+        data_train = np.load(FLAGS.dataset_path_train)
+        data_val = np.load(FLAGS.dataset_path_val)
+        train_dataset = dict(data_train)   # keys: observations, actions, rewards, terminals, etc.
+        # val_dataset = dict(data_val)           # or split off a slice if you want validation
+        val_dataset = None # making None because val_dataset has issue where data['terminals'][-1] errors out <-- need to figure out why but in mean time we can just try training with train dataset only
+
+    else:
+        # Allow their code to download the dataset corresponding to the specified env_name
+        print("Data NOT specified. Going to use auto-download OGBench data based on env_name")
+
+        env, train_dataset, val_dataset = make_env_and_datasets(FLAGS.env_name, frame_stack=config['frame_stack'])
+    
+
+    # Make sure to use distracted env if we are training on the distraction dataset
+    # This is important because we need the observation space to match that of the data we're using
+    if (FLAGS.using_distractions_dataset):
+        env = ImageDistractionWrapper(
+            env,
+            distracting_images_dir='/work/10993/rohanpatel01/vista/DAVIS/JPEGImages/480p/',
+        )
+    
+
+
 
     dataset_class = {
         'GCDataset': GCDataset,
@@ -73,11 +102,23 @@ def main(_):
     if val_dataset is not None:
         val_dataset = dataset_class(Dataset.create(**val_dataset), config)
 
+
+    # breakpoint()
+    # # see what shape the train_dataset elements are. We might have a bug here because next_v_t in HIQL algo is mishaped. 
+    # # next_v_t should be (1024, ) I THINK but is really (1024, 64, 128). Not sure which is correct but I think should be (1024, ) bc that's the shape of the other stuff
+    # #       that next_v_t is being operated with
+    # batch = train_dataset.sample(4)
+    # for k, v in batch.items():
+    #     print(k, v.shape, v.dtype)
+
+    # breakpoint()
+
     # Initialize agent.
     random.seed(FLAGS.seed)
     np.random.seed(FLAGS.seed)
 
     example_batch = train_dataset.sample(1)
+    # breakpoint()
     if config['discrete']:
         # Fill with the maximum action to let the agent know the action space size.
         example_batch['actions'] = np.full_like(example_batch['actions'], env.action_space.n - 1)
