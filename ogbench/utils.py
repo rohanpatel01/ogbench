@@ -379,7 +379,7 @@ class ImageDistractionWrapper(gymnasium.Wrapper):
         h, w, c = ob_shape
         new_w = 2 * w
         self._observation_space = Box(low=0, high=255, shape=(h, new_w, c), dtype=np.uint8)
-
+    
     def reset(self, *args, **kwargs):
         folders = self._folder_names if self._folder_names else self._discover_folders()
         if not folders:

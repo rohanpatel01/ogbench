@@ -4,35 +4,12 @@ build-backend = "flit_core.buildapi"
 
 [project]
 name = "ogbench"
-version = "1.1.5"
-requires-python = ">=3.12"
+version = "1.2.1"
+requires-python = ">=3.8"
 dependencies = [
-    "mujoco >= 3.1.6, < 3.3.5",
+    "mujoco >= 3.1.6",
     "dm_control >= 1.0.20",
     "gymnasium[mujoco]",
-    "scikit-learn>=1.7.2",
-    "opencv-python>=4.12.0.88",
-    "pyopengl-accelerate>=3.1.10",
-    "pyopengl>=3.1.10",
-    "pytest>=9.0.1",
-    "pytest-xdist>=3.8.0",
-    "jax[cuda13]",
-    "ml-dtypes == 0.5",
-    "flax >= 0.8.4",
-    "numpy == 2.2.6",
-    "tensorstore == 0.1.76",
-    "scipy == 1.16.3",
-    "distrax >= 0.1.5",
-    "ml_collections",
-    "matplotlib",
-    "moviepy",
-    "wandb == 0.22.3",
-    "nvidia-cublas",
-    "nvidia-cuda-cupti-cu13",
-    "nvidia-cudnn-cu13",
-    "nvidia-cusolver-cu13",
-    "nvidia-nccl-cu13"
-
 ]
 authors = [
     { name = "Seohong Park" },
@@ -49,12 +26,16 @@ dynamic = ["description"]
 
 [project.optional-dependencies]
 train = [
-    
+    "jax[cuda12] >= 0.4.26",
+    "flax >= 0.8.4",
+    "distrax >= 0.1.5",
+    "ml_collections",
+    "matplotlib",
+    "moviepy",
+    "wandb",
 ]
 dev = [
     "ruff",
-    "nvtx>=0.2.13",
-    "debugpy>=1.8.17",
 ]
 all = [
     "ogbench[train,dev]",
@@ -64,12 +45,8 @@ all = [
 Home = "https://github.com/seohongpark/ogbench"
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py310"
 line-length = 120
 
 [tool.ruff.format]
 quote-style = "single"
-
-[tool.basedpyright]
-pythonVersion = "3.12"
-typeCheckingMode = "basic"

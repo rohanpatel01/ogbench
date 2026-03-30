@@ -70,8 +70,11 @@ def setup_wandb(
     wandb_output_dir = tempfile.mkdtemp()
     tags = [group] if group is not None else None
 
+    config_keys = get_flag_dict()
+    config_keys['auto_gen_exp_name'] = get_exp_name(config_keys['seed'])
+
     init_kwargs = dict(
-        config=get_flag_dict(),
+        config=config_keys,
         project=project,
         entity=entity,
         tags=tags,

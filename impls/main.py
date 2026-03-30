@@ -49,12 +49,13 @@ flags.DEFINE_string('dataset_path_train', None, 'Path to dataset for train.')
 flags.DEFINE_string('dataset_path_val', None, 'Path to dataset for val.')
 flags.DEFINE_integer('using_distractions_dataset', 0, 'Determines whether we use the distraction env or normal env')
 
-
+flags.DEFINE_string('exp_name', "Default_Exp_Name", 'Name the experiment will show on WANDB')
 
 
 def main(_):
     # Set up logger.
-    exp_name = get_exp_name(FLAGS.seed)
+    exp_name = FLAGS.exp_name
+
     setup_wandb(project='OGBench', group=FLAGS.run_group, name=exp_name)
 
     FLAGS.save_dir = os.path.join(FLAGS.save_dir, wandb.run.project, FLAGS.run_group, exp_name)

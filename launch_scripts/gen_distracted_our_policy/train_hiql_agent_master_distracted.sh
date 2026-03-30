@@ -6,8 +6,8 @@ export MUJOCO_GL=egl
 source /work/10993/rohanpatel01/vista/miniconda3/etc/profile.d/conda.sh
 conda activate /work/10993/rohanpatel01/vista/miniconda3/envs/ogbench
 
-DATASET_PATH_TRAIN=/work/10993/rohanpatel01/vista/ogbench/impls/data_gen_scripts/data/final_save_5499/visual-antmaze-medium-stitch-v0-distracted.npz
-DATASET_PATH_VAL=/work/10993/rohanpatel01/vista/ogbench/impls/data_gen_scripts/data/final_save_5499/visual-antmaze-medium-stitch-v0-distracted-val.npz
+DATASET_PATH_TRAIN=/work/10993/rohanpatel01/vista/ogbench/data_gen_scripts/data/final_save_5499/visual-antmaze-medium-stitch-v0-distracted.npz
+DATASET_PATH_VAL=/work/10993/rohanpatel01/vista/ogbench/data_gen_scripts/data/final_save_5499/visual-antmaze-medium-stitch-v0-distracted-val.npz
 
 ENV_NAME=visual-antmaze-medium-stitch-v0
 
