@@ -24,6 +24,34 @@ def ensemblize(cls, num_qs, out_axes=0, **kwargs):
         **kwargs,
     )
 
+# This CNN encoder is same as defined in ACRO paper
+class CNNEncoder(nn.Module):
+    """
+    Simple CNN encoder that maps (B, H, W, C) → (B, output_dim).
+ 
+    JAX/Flax uses channels-last (NHWC) by default, whereas PyTorch uses
+    channels-first (NCHW).  If your data arrives as NCHW you can transpose
+    it before calling the encoder, or set use_running_average appropriately.
+    """
+    output_dim: int
+    num_conv_filters: int
+    kernel_size: int
+ 
+    @nn.compact
+    def __call__(self, x: jnp.ndarray) -> jnp.ndarray:
+        # x: (B, H, W, C)  — channels last
+        x = nn.Conv(features=self.num_conv_filters, kernel_size=(self.kernel_size, self.kernel_size))(x)
+        x = nn.relu(x)
+        x = nn.Conv(features=self.num_conv_filters, kernel_size=(self.kernel_size, self.kernel_size))(x)
+        x = nn.relu(x)
+        x = nn.Conv(features=self.num_conv_filters, kernel_size=(self.kernel_size, self.kernel_size))(x)
+        x = nn.relu(x)
+        x = nn.Conv(features=self.num_conv_filters, kernel_size=(self.kernel_size, self.kernel_size))(x)
+        x = nn.relu(x)
+        x = x.reshape((x.shape[0], -1))
+        x = nn.Dense(self.output_dim)(x)
+        x = nn.relu(x)
+        return x
 
 class Identity(nn.Module):
     """Identity layer."""

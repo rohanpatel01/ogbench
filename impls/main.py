@@ -11,7 +11,7 @@ import wandb
 from absl import app, flags
 from agents import agents
 from ml_collections import config_flags
-from utils.datasets import Dataset, GCDataset, HGCDataset
+from utils.datasets import Dataset, GCDataset, HGCDataset, ACRODataset
 from utils.env_utils import make_env_and_datasets
 from utils.evaluation import evaluate
 from utils.flax_utils import restore_agent, save_agent
@@ -48,6 +48,7 @@ config_flags.DEFINE_config_file('agent', 'agents/gciql.py', lock_config=False)
 flags.DEFINE_string('dataset_path_train', None, 'Path to dataset for train.')
 flags.DEFINE_string('dataset_path_val', None, 'Path to dataset for val.')
 flags.DEFINE_integer('using_distractions_dataset', 0, 'Determines whether we use the distraction env or normal env')
+flags.DEFINE_integer('use_ACRO_rep', 0, 'Whether to use ACRO as representation or to use state.')
 
 flags.DEFINE_string('exp_name', "Default_Exp_Name", 'Name the experiment will show on WANDB')
 
@@ -61,11 +62,15 @@ def main(_):
     FLAGS.save_dir = os.path.join(FLAGS.save_dir, wandb.run.project, FLAGS.run_group, exp_name)
     os.makedirs(FLAGS.save_dir, exist_ok=True)
     flag_dict = get_flag_dict()
+
+    # breakpoint()
+
     with open(os.path.join(FLAGS.save_dir, 'flags.json'), 'w') as f:
         json.dump(flag_dict, f)
 
     # Set up environment and dataset.
     config = FLAGS.agent
+    
 
     if ((FLAGS.dataset_path_train) and (FLAGS.dataset_path_val)): # Use our dataset for training
         print("Using specified data")
@@ -98,6 +103,7 @@ def main(_):
     dataset_class = {
         'GCDataset': GCDataset,
         'HGCDataset': HGCDataset,
+        'ACRODataset': ACRODataset,
     }[config['dataset_class']]
     train_dataset = dataset_class(Dataset.create(**train_dataset), config)
     if val_dataset is not None:
@@ -160,7 +166,7 @@ def main(_):
             train_logger.log(train_metrics, step=i)
 
         # Evaluate agent.
-        if i == 1 or i % FLAGS.eval_interval == 0:
+        if i % FLAGS.eval_interval == 0:    # i == 1 or 
             if FLAGS.eval_on_cpu:
                 eval_agent = jax.device_put(agent, device=jax.devices('cpu')[0])
             else:
