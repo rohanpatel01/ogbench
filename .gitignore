@@ -19,3 +19,5 @@ launch_scripts/hiql_train.*
 *.csv
 *.mp4
 *.png
+*.o*
+*.e*

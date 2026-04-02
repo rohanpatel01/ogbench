@@ -4,8 +4,12 @@ import numpy as np
 import imageio
 import os
 
-DATA_FILE = '/work/10993/rohanpatel01/vista/ogbench/impls/data_gen_scripts/undistracted_data/final_save_5499/visual-antmaze-medium-stitch-v0.npz'
-OUTPUT_DIR = 'trajectories_videos/undistracted'
+DATA_FILE = '/work/10993/rohanpatel01/vista/ogbench/data_gen_scripts/data/distracted_from_downloaded/new/visual-antmaze-medium-stitch-v0-distracted.npz'
+OUTPUT_DIR = 'trajectories_videos/distracted_from_downloaded/new'
+MAX_VIDEOS = 10
+
+
+
 
 # Create output directory if it doesn't exist
 if not os.path.exists(OUTPUT_DIR):
@@ -23,10 +27,8 @@ episode_ends = np.where(terminals)[0]
 
 print(f"Total frames: {obs.shape[0]}")
 print(f"Number of episodes to process: {len(episode_ends)}")
-
 start_idx = 0
 
-MAX_VIDEOS = 10
 count_videos_generated = 0
 for i, end_idx in enumerate(episode_ends):
 

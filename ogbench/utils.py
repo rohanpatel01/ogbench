@@ -192,6 +192,7 @@ def make_env_and_datasets(
     # Load datasets.
     if dataset_path is None:
         dataset_dir = os.path.expanduser(dataset_dir)
+        print("Downloading original OGBench datasets")
         download_datasets([dataset_name], dataset_dir)
         train_dataset_path = os.path.join(dataset_dir, f'{dataset_name}.npz')
         val_dataset_path = os.path.join(dataset_dir, f'{dataset_name}-val.npz')
@@ -254,6 +255,7 @@ class ImageDistractionWrapper(gymnasium.Wrapper):
         distracting_images_dir=None,
         position='right',
         difficulty='easy',
+        mode=None,
         specific_distractor=None,
 
     ):
@@ -291,10 +293,17 @@ class ImageDistractionWrapper(gymnasium.Wrapper):
         }
         self._distracting_images_dir = os.path.expanduser(distracting_images_dir)
 
-        if specific_distractor is None:
-            self._folder_names = self._folder_names_difficulty_map[difficulty]
-        else:
+        # if mode == "same_distractor":
+        #     self._folder_names = ['bear']
+
+        # elif 
+        # breakpoint()
+        if specific_distractor is not None:
             self._folder_names = [specific_distractor]
+
+        else:
+            self._folder_names = self._folder_names_difficulty_map[difficulty]
+            
 
         self._position = position
         self._image_sequences = {}  # folder_name -> list of (H, W, 3) arrays
@@ -382,6 +391,7 @@ class ImageDistractionWrapper(gymnasium.Wrapper):
     
     def reset(self, *args, **kwargs):
         folders = self._folder_names if self._folder_names else self._discover_folders()
+        # breakpoint()
         if not folders:
             raise ValueError(
                 f'No distraction folders found in {self._distracting_images_dir}. '
