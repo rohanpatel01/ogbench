@@ -199,6 +199,8 @@ class HIQLAgent(flax.struct.PyTreeNode):
         ex_observations,
         ex_actions,
         config,
+        encoder_def    = None,
+        encoder_params = None,
     ):
         """Create a new agent.
 

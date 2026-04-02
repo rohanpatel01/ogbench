@@ -17,6 +17,8 @@ from utils.evaluation import evaluate
 from utils.flax_utils import restore_agent, save_agent
 from utils.log_utils import CsvLogger, get_exp_name, get_flag_dict, get_wandb_video, setup_wandb
 
+from agents import ACROAgent
+
 from ogbench.utils import ImageDistractionWrapper
 
 
@@ -51,6 +53,7 @@ flags.DEFINE_integer('using_distractions_dataset', 0, 'Determines whether we use
 flags.DEFINE_integer('use_ACRO_rep', 0, 'Whether to use ACRO as representation or to use state.')
 
 flags.DEFINE_string('exp_name', "Default_Exp_Name", 'Name the experiment will show on WANDB')
+flags.DEFINE_string('acro_restore_path', None, 'Path to saved ACRO model weights.')
 
 
 def main(_):
@@ -70,7 +73,6 @@ def main(_):
 
     # Set up environment and dataset.
     config = FLAGS.agent
-    
 
     if ((FLAGS.dataset_path_train) and (FLAGS.dataset_path_val)): # Use our dataset for training
         print("Using specified data")
@@ -98,8 +100,6 @@ def main(_):
         )
     
 
-
-
     dataset_class = {
         'GCDataset': GCDataset,
         'HGCDataset': HGCDataset,
@@ -124,23 +124,87 @@ def main(_):
     random.seed(FLAGS.seed)
     np.random.seed(FLAGS.seed)
 
+    
+    
+    
+    # Pre-train ACRO
+    if FLAGS.use_acro:
+
+        acro_config = ACROAgent.get_config()
+
+
+        example_batch = train_dataset.sample(1)
+        
+        # breakpoint()
+        if config['discrete']:
+            # Fill with the maximum action to let the agent know the action space size.
+            example_batch['actions'] = np.full_like(example_batch['actions'], env.action_space.n - 1)
+
+        
+        acro_train_dataset = ACRODataset(Dataset.create(**train_dataset), acro_config)
+        if val_dataset is not None:
+            acro_val_dataset = ACRODataset(Dataset.create(**train_dataset), acro_config)
+
+
+        # Load pretrained ACRO
+        # TODO: Note just pulling the acro_config will only load the deafult values we see in acro.py:get_config()
+        #       rather than pulling whatever values we would've overriden. So we need to come back and fix this
+        acro_agent = ACROAgent.create(FLAGS.seed, example_batch['observations'], example_batch['actions'], acro_config)
+
+        if FLAGS.acro_restore_path:
+            acro_agent = restore_agent(acro_agent, FLAGS.acro_restore_path)
+        else:
+            # Train ACRO
+            train_loop(acro_agent, acro_train_dataset, acro_val_dataset, acro_config, env)
+
+
+        # Extract encoder definition and params
+        encoder_def    = acro_agent.network.select('idm').encoder  # the Flax module
+        encoder_params = acro_agent.network.params['modules_idm']['encoder']
+
+    else:
+        encoder_def    = None
+        encoder_params = None
+
+
+
+    # Done Pre-training ACRO, Run actual algorithm    
+
+    # Pass in ACRO's encoder to the algorithm we want to run
+    # ex: HIQL
     example_batch = train_dataset.sample(1)
-    # breakpoint()
+        
     if config['discrete']:
         # Fill with the maximum action to let the agent know the action space size.
         example_batch['actions'] = np.full_like(example_batch['actions'], env.action_space.n - 1)
-
+        
     agent_class = agents[config['agent_name']]
     agent = agent_class.create(
         FLAGS.seed,
         example_batch['observations'],
         example_batch['actions'],
         config,
+        encoder_def=encoder_def,
+        encoder_params=encoder_params
     )
 
     # Restore agent.
     if FLAGS.restore_path is not None:
         agent = restore_agent(agent, FLAGS.restore_path, FLAGS.restore_epoch)
+        
+
+    train_loop(agent, train_dataset, val_dataset, config, env)
+
+
+
+
+
+
+def train_loop(agent, train_dataset, val_dataset, config, env):
+    
+
+
+
 
     # Train agent.
     train_logger = CsvLogger(os.path.join(FLAGS.save_dir, 'train.csv'))
@@ -215,5 +279,10 @@ def main(_):
     eval_logger.close()
 
 
+
+    
+
+
 if __name__ == '__main__':
     app.run(main)
+
