@@ -50,7 +50,8 @@ config_flags.DEFINE_config_file('agent', 'agents/gciql.py', lock_config=False)
 flags.DEFINE_string('dataset_path_train', None, 'Path to dataset for train.')
 flags.DEFINE_string('dataset_path_val', None, 'Path to dataset for val.')
 flags.DEFINE_integer('using_distractions_dataset', 0, 'Determines whether we use the distraction env or normal env')
-flags.DEFINE_integer('use_ACRO_rep', 0, 'Whether to use ACRO as representation or to use state.')
+flags.DEFINE_integer('use_acro_rep', 0, 'Whether to use ACRO as representation or to use state.')
+flags.DEFINE_integer('use_acro_for_reward', 0, 'Whether to use ACRO as reward.')
 
 flags.DEFINE_string('exp_name', "Default_Exp_Name", 'Name the experiment will show on WANDB')
 flags.DEFINE_string('acro_restore_path', None, 'Path to saved ACRO model weights.')
@@ -89,7 +90,7 @@ def main(_):
         print("Data NOT specified. Going to use auto-download OGBench data based on env_name")
 
         env, train_dataset, val_dataset = make_env_and_datasets(FLAGS.env_name, frame_stack=config['frame_stack'])
-    
+
 
     # Make sure to use distracted env if we are training on the distraction dataset
     # This is important because we need the observation space to match that of the data we're using
@@ -98,7 +99,7 @@ def main(_):
             env,
             distracting_images_dir='/work/10993/rohanpatel01/vista/DAVIS/JPEGImages/480p/',
         )
-    
+
 
     dataset_class = {
         'GCDataset': GCDataset,
@@ -111,7 +112,7 @@ def main(_):
 
 
     # breakpoint()
-    # # see what shape the train_dataset elements are. We might have a bug here because next_v_t in HIQL algo is mishaped. 
+    # # see what shape the train_dataset elements are. We might have a bug here because next_v_t in HIQL algo is mishaped.
     # # next_v_t should be (1024, ) I THINK but is really (1024, 64, 128). Not sure which is correct but I think should be (1024, ) bc that's the shape of the other stuff
     # #       that next_v_t is being operated with
     # batch = train_dataset.sample(4)
@@ -124,27 +125,20 @@ def main(_):
     random.seed(FLAGS.seed)
     np.random.seed(FLAGS.seed)
 
-    
-    
-    
     # Pre-train ACRO
-    if FLAGS.use_acro:
+    if FLAGS.use_acro_for_reward:
 
         acro_config = ACROAgent.get_config()
-
-
         example_batch = train_dataset.sample(1)
-        
+
         # breakpoint()
         if config['discrete']:
             # Fill with the maximum action to let the agent know the action space size.
             example_batch['actions'] = np.full_like(example_batch['actions'], env.action_space.n - 1)
 
-        
         acro_train_dataset = ACRODataset(Dataset.create(**train_dataset), acro_config)
         if val_dataset is not None:
             acro_val_dataset = ACRODataset(Dataset.create(**train_dataset), acro_config)
-
 
         # Load pretrained ACRO
         # TODO: Note just pulling the acro_config will only load the deafult values we see in acro.py:get_config()
@@ -157,55 +151,48 @@ def main(_):
             # Train ACRO
             train_loop(acro_agent, acro_train_dataset, acro_val_dataset, acro_config, env)
 
-
         # Extract encoder definition and params
-        encoder_def    = acro_agent.network.select('idm').encoder  # the Flax module
-        encoder_params = acro_agent.network.params['modules_idm']['encoder']
-
+        acro_encoder = acro_agent.network.select('encoder')
     else:
-        encoder_def    = None
-        encoder_params = None
+        acro_encoder = None
 
 
-
-    # Done Pre-training ACRO, Run actual algorithm    
+    # Done Pre-training ACRO, Run actual algorithm
 
     # Pass in ACRO's encoder to the algorithm we want to run
     # ex: HIQL
     example_batch = train_dataset.sample(1)
-        
+
     if config['discrete']:
         # Fill with the maximum action to let the agent know the action space size.
         example_batch['actions'] = np.full_like(example_batch['actions'], env.action_space.n - 1)
-        
+
     agent_class = agents[config['agent_name']]
-    agent = agent_class.create(
-        FLAGS.seed,
-        example_batch['observations'],
-        example_batch['actions'],
-        config,
-        encoder_def=encoder_def,
-        encoder_params=encoder_params
-    )
+    if FLAGS.use_acro_for_reward:
+        agent = agent_class.create(
+            FLAGS.seed,
+            example_batch['observations'],
+            example_batch['actions'],
+            config,
+            acro_encoder=acro_encoder,
+        )
+    else:
+        agent = agent_class.create(
+            FLAGS.seed,
+            example_batch['observations'],
+            example_batch['actions'],
+            config,
+        )
 
     # Restore agent.
     if FLAGS.restore_path is not None:
         agent = restore_agent(agent, FLAGS.restore_path, FLAGS.restore_epoch)
-        
+
 
     train_loop(agent, train_dataset, val_dataset, config, env)
 
 
-
-
-
-
 def train_loop(agent, train_dataset, val_dataset, config, env):
-    
-
-
-
-
     # Train agent.
     train_logger = CsvLogger(os.path.join(FLAGS.save_dir, 'train.csv'))
     eval_logger = CsvLogger(os.path.join(FLAGS.save_dir, 'eval.csv'))
@@ -230,7 +217,7 @@ def train_loop(agent, train_dataset, val_dataset, config, env):
             train_logger.log(train_metrics, step=i)
 
         # Evaluate agent.
-        if i % FLAGS.eval_interval == 0:    # i == 1 or 
+        if i % FLAGS.eval_interval == 0:    # i == 1 or
             if FLAGS.eval_on_cpu:
                 eval_agent = jax.device_put(agent, device=jax.devices('cpu')[0])
             else:
@@ -280,7 +267,7 @@ def train_loop(agent, train_dataset, val_dataset, config, env):
 
 
 
-    
+
 
 
 if __name__ == '__main__':

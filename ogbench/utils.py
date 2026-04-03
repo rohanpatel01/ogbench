@@ -296,14 +296,14 @@ class ImageDistractionWrapper(gymnasium.Wrapper):
         # if mode == "same_distractor":
         #     self._folder_names = ['bear']
 
-        # elif 
+        # elif
         # breakpoint()
         if specific_distractor is not None:
             self._folder_names = [specific_distractor]
 
         else:
             self._folder_names = self._folder_names_difficulty_map[difficulty]
-            
+
 
         self._position = position
         self._image_sequences = {}  # folder_name -> list of (H, W, 3) arrays
@@ -388,7 +388,7 @@ class ImageDistractionWrapper(gymnasium.Wrapper):
         h, w, c = ob_shape
         new_w = 2 * w
         self._observation_space = Box(low=0, high=255, shape=(h, new_w, c), dtype=np.uint8)
-    
+
     def reset(self, *args, **kwargs):
         folders = self._folder_names if self._folder_names else self._discover_folders()
         # breakpoint()
@@ -410,7 +410,7 @@ class ImageDistractionWrapper(gymnasium.Wrapper):
         # Added this so during evaluation we also apply distraction to goal
         if 'goal' in info and isinstance(info['goal'], np.ndarray):
             info['goal'] = self._add_distraction(info['goal'])
-            
+
         return ob, info
 
     def step(self, action):

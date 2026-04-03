@@ -33,9 +33,16 @@ class HIQLAgent(flax.struct.PyTreeNode):
         compute the former and the current value function to compute the latter. This is similar to how double DQN
         mitigates overestimation bias.
         """
+        # change rewards with acro
+        if self.network.select('acro_encoder') is not None:
+            encoded_obs = self.network.select('acro_encoder')(batch['observations'])
+            encoded_goals = self.network.select('acro_encoder')(batch['value_goals'])
+            # breakpoint() # TODO: check that value_goals is acrtually the rendered goals
+            # TODO: make sure value_goals is the actual rendered goal observations
+            batch['rewards'] = -jnp.linalg.norm(encoded_goals - encoded_obs) # default is 2 norm for vectors (single-axis reductions)
+
         (next_v1_t, next_v2_t) = self.network.select('target_value')(batch['next_observations'], batch['value_goals'])
         next_v_t = jnp.minimum(next_v1_t, next_v2_t)
-        # breakpoint()
         q = batch['rewards'] + self.config['discount'] * batch['masks'] * next_v_t
 
         (v1_t, v2_t) = self.network.select('target_value')(batch['observations'], batch['value_goals'])
@@ -199,8 +206,7 @@ class HIQLAgent(flax.struct.PyTreeNode):
         ex_observations,
         ex_actions,
         config,
-        encoder_def    = None,
-        encoder_params = None,
+        acro_encoder=None,
     ):
         """Create a new agent.
 
@@ -234,6 +240,10 @@ class HIQLAgent(flax.struct.PyTreeNode):
         )
         goal_rep_seq.append(LengthNormalize())
         goal_rep_def = nn.Sequential(goal_rep_seq)
+
+        if acro_encoder is not None:
+            acro_encoder_def = acro_encoder
+
 
         # Define the encoders that handle the inputs to the value and actor networks.
         # The subgoal representation phi([s; g]) is trained by the parameterized value function V(s, phi([s; g])).
@@ -298,13 +308,23 @@ class HIQLAgent(flax.struct.PyTreeNode):
             gc_encoder=high_actor_encoder_def,
         )
 
-        network_info = dict(
-            goal_rep=(goal_rep_def, (jnp.concatenate([ex_observations, ex_goals], axis=-1))),
-            value=(value_def, (ex_observations, ex_goals)),
-            target_value=(target_value_def, (ex_observations, ex_goals)),
-            low_actor=(low_actor_def, (ex_observations, ex_goals)),
-            high_actor=(high_actor_def, (ex_observations, ex_goals)),
-        )
+        if acro_encoder is not None:
+            network_info = dict(
+                goal_rep=(goal_rep_def, (jnp.concatenate([ex_observations, ex_goals], axis=-1))),
+                value=(value_def, (ex_observations, ex_goals)),
+                target_value=(target_value_def, (ex_observations, ex_goals)),
+                low_actor=(low_actor_def, (ex_observations, ex_goals)),
+                high_actor=(high_actor_def, (ex_observations, ex_goals)),
+                acro_encoder=(acro_encoder_def, (ex_observations))
+            )
+        else:
+            network_info = dict(
+                goal_rep=(goal_rep_def, (jnp.concatenate([ex_observations, ex_goals], axis=-1))),
+                value=(value_def, (ex_observations, ex_goals)),
+                target_value=(target_value_def, (ex_observations, ex_goals)),
+                low_actor=(low_actor_def, (ex_observations, ex_goals)),
+                high_actor=(high_actor_def, (ex_observations, ex_goals)),
+            )
         networks = {k: v[0] for k, v in network_info.items()}
         network_args = {k: v[1] for k, v in network_info.items()}
 
