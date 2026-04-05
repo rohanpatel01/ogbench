@@ -16,7 +16,7 @@ class ACROAgent(flax.struct.PyTreeNode):
     rng: Any
     network: Any
     config: Any = nonpytree_field()
-
+    # encoder:... TODO: need to make encoder visible outside ACROAgent so we can pass it into HIQL's own networks
 
     @jax.jit
     def loss(self, batch, grad_params, rng=None):
@@ -133,7 +133,7 @@ def get_config():
             batch_size=256,  # Batch size.
             layer_norm=False,  # Whether to use layer normalization.
             acro_k_step=15,  # acro k step.
-            rep_dim=50,  # ACRO representation dimension.
+            rep_dim=256,  # ACRO representation dimension.
             num_conv_filters=32,
             kernel_size=3,    
             # Dataset hyperparameters.

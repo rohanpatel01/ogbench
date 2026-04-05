@@ -9,6 +9,9 @@ import numpy as np
 import tqdm
 import wandb
 from absl import app, flags
+from agents.acro import ACROAgent
+from agents import acro
+
 from agents import agents
 from ml_collections import config_flags
 from utils.datasets import Dataset, GCDataset, HGCDataset, ACRODataset
@@ -17,7 +20,8 @@ from utils.evaluation import evaluate
 from utils.flax_utils import restore_agent, save_agent
 from utils.log_utils import CsvLogger, get_exp_name, get_flag_dict, get_wandb_video, setup_wandb
 
-from agents import ACROAgent
+
+from utils.encoders import get_acro_encoder
 
 from ogbench.utils import ImageDistractionWrapper
 
@@ -121,14 +125,16 @@ def main(_):
 
     # breakpoint()
 
+    acro_val_dataset = None
+
     # Initialize agent.
     random.seed(FLAGS.seed)
     np.random.seed(FLAGS.seed)
 
     # Pre-train ACRO
-    if FLAGS.use_acro_for_reward:
+    if FLAGS.use_acro_for_reward or FLAGS.use_acro_rep:
 
-        acro_config = ACROAgent.get_config()
+        acro_config = acro.get_config()
         example_batch = train_dataset.sample(1)
 
         # breakpoint()
@@ -136,9 +142,12 @@ def main(_):
             # Fill with the maximum action to let the agent know the action space size.
             example_batch['actions'] = np.full_like(example_batch['actions'], env.action_space.n - 1)
 
-        acro_train_dataset = ACRODataset(Dataset.create(**train_dataset), acro_config)
+        train_dataset_acro = dict(data_train)
+        val_dataset_acro = dict(data_val) 
+
+        acro_train_dataset = ACRODataset(Dataset.create(**train_dataset_acro), acro_config)    
         if val_dataset is not None:
-            acro_val_dataset = ACRODataset(Dataset.create(**train_dataset), acro_config)
+            acro_val_dataset = ACRODataset(Dataset.create(**val_dataset_acro), acro_config)
 
         # Load pretrained ACRO
         # TODO: Note just pulling the acro_config will only load the deafult values we see in acro.py:get_config()
@@ -150,9 +159,11 @@ def main(_):
         else:
             # Train ACRO
             train_loop(acro_agent, acro_train_dataset, acro_val_dataset, acro_config, env)
-
+            print("ACRO done pre-training")
         # Extract encoder definition and params
-        acro_encoder = acro_agent.network.select('encoder')
+        # acro_encoder = acro_agent.network.select('encoder')
+        acro_encoder = get_acro_encoder(acro_agent)
+
     else:
         acro_encoder = None
 
@@ -168,7 +179,7 @@ def main(_):
         example_batch['actions'] = np.full_like(example_batch['actions'], env.action_space.n - 1)
 
     agent_class = agents[config['agent_name']]
-    if FLAGS.use_acro_for_reward:
+    if FLAGS.use_acro_for_reward or FLAGS.use_acro_rep:
         agent = agent_class.create(
             FLAGS.seed,
             example_batch['observations'],
@@ -190,7 +201,7 @@ def main(_):
 
 
     train_loop(agent, train_dataset, val_dataset, config, env)
-
+    print("Done training HIQL")
 
 def train_loop(agent, train_dataset, val_dataset, config, env):
     # Train agent.
@@ -201,6 +212,13 @@ def train_loop(agent, train_dataset, val_dataset, config, env):
     for i in tqdm.tqdm(range(1, FLAGS.train_steps + 1), smoothing=0.1, dynamic_ncols=True):
         # Update agent.
         batch = train_dataset.sample(config['batch_size'])
+
+        # TODO: Pass all observations through the encoder trained by ACRO when specified by the flag
+        # if FLAGS.use_acro_rep and (config['agent_name'] == 'hiql'):
+        #     for key in batch:
+        #         if key in ['observations', 'next_observations', 'value_goals', 'low_actor_goals', 'high_actor_goals',  'high_actor_targets']:
+        #             batch[key] = agent.network.select('acro_encoder')(batch[key])
+                    
         agent, update_info = agent.update(batch)
 
         # Log metrics.
