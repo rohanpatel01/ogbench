@@ -368,28 +368,32 @@ class HIQLAgent(flax.struct.PyTreeNode):
         )
 
 
-        if acro_encoder is not None:
-            # Necessary because when we init the goal_rep network we need to pass input shape of encoded observation
-            
+        # Decide inputs for goal_rep. If using acro_rep then we encode the example inputs
+        if FLAGS.use_acro_rep:
+            assert acro_encoder is not None
             ex_obs_encoded = acro_encoder(ex_observations)
             ex_goals_encoded = acro_encoder(ex_goals)
-
-            network_info = dict(
-                goal_rep=(goal_rep_def, (jnp.concatenate([ex_obs_encoded, ex_goals_encoded], axis=-1))),
-                value=(value_def, (ex_observations, ex_goals)),
-                target_value=(target_value_def, (ex_observations, ex_goals)),
-                low_actor=(low_actor_def, (ex_observations, ex_goals)),
-                high_actor=(high_actor_def, (ex_observations, ex_goals)),
-                acro_encoder=(acro_encoder, (ex_observations))
-            )
+            goal_rep_input = (jnp.concatenate([ex_obs_encoded, ex_goals_encoded], axis=-1))
         else:
-            network_info = dict(
-                goal_rep=(goal_rep_def, (jnp.concatenate([ex_observations, ex_goals], axis=-1))),
-                value=(value_def, (ex_observations, ex_goals)),
-                target_value=(target_value_def, (ex_observations, ex_goals)),
-                low_actor=(low_actor_def, (ex_observations, ex_goals)),
-                high_actor=(high_actor_def, (ex_observations, ex_goals)),
-            )
+            goal_rep_input = (jnp.concatenate([ex_observations, ex_goals], axis=-1))
+
+        # Base network_info (shared across all cases)
+        network_info = dict(
+            goal_rep=(goal_rep_def, goal_rep_input),
+            value=(value_def, (ex_observations, ex_goals)),
+            target_value=(target_value_def, (ex_observations, ex_goals)),
+            low_actor=(low_actor_def, (ex_observations, ex_goals)),
+            high_actor=(high_actor_def, (ex_observations, ex_goals)),
+        )
+
+        # Add acro_encoder if needed
+        if FLAGS.use_acro_rep or FLAGS.use_acro_for_reward:
+            network_info["acro_encoder"] = (acro_encoder, (ex_observations))
+
+
+
+
+
         networks = {k: v[0] for k, v in network_info.items()}
         network_args = {k: v[1] for k, v in network_info.items()}
 
