@@ -222,6 +222,16 @@ class HIQLAgent(flax.struct.PyTreeNode):
         It first queries the high-level actor to obtain subgoal representations, and then queries the low-level actor
         to obtain raw actions.
         """
+
+        # TODO: Must check whether observations and goals are batched. Will cause error during evaluation because evaluation 
+        #       produces unbatched observations and goals so we must batch them first so networks expect the same shape during
+        #       training and evaluation
+        is_unbatched = (observations.ndim == 3)
+        if is_unbatched:
+            observations = jnp.expand_dims(observations, axis=0)
+            goals = jnp.expand_dims(goals, axis=0)
+
+
         high_seed, low_seed = jax.random.split(seed)
 
         high_dist = self.network.select('high_actor')(observations, goals, temperature=temperature)
@@ -233,6 +243,12 @@ class HIQLAgent(flax.struct.PyTreeNode):
 
         if not self.config['discrete']:
             actions = jnp.clip(actions, -1, 1)
+
+        # If we added a batch dim just to please the network forward prop we need to remove the batch dim so
+        # the actions is what would be expected
+        if is_unbatched:
+            actions = jnp.squeeze(actions, axis=0)  # (1, 8) → (8,)
+
         return actions
 
     @classmethod

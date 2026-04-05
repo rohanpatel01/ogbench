@@ -226,13 +226,9 @@ def train_loop(agent, train_dataset, val_dataset, config, env):
     # for i in tqdm.tqdm(range(1, FLAGS.train_steps + 1), smoothing=0.1, dynamic_ncols=True):
         # Update agent.
         batch = train_dataset.sample(config['batch_size'])
+        # breakpoint()
+        print(f"[train HIQL] observation shape: {batch['observations'].shape}, dtype: {batch['observations'].dtype}")
 
-        # TODO: Pass all observations through the encoder trained by ACRO when specified by the flag
-        # if FLAGS.use_acro_rep and (config['agent_name'] == 'hiql'):
-        #     for key in batch:
-        #         if key in ['observations', 'next_observations', 'value_goals', 'low_actor_goals', 'high_actor_goals',  'high_actor_targets']:
-        #             batch[key] = agent.network.select('acro_encoder')(batch[key])
-                    
         agent, update_info = agent.update(batch)
 
         # Log metrics.
@@ -248,8 +244,9 @@ def train_loop(agent, train_dataset, val_dataset, config, env):
             wandb.log(train_metrics, step=i)
             train_logger.log(train_metrics, step=i)
 
-        # Evaluate agent.
-        if i % FLAGS.eval_interval == 0:    # i == 1 or
+        # Evaluate agent. But do not evaluate when we are pre-training the ACRO encoder
+        if (agent.config['agent_name'] != 'acro') and (i == 1 or i % FLAGS.eval_interval == 0):
+            print("Evaluate agent: ", agent.config['agent_name'])
             if FLAGS.eval_on_cpu:
                 eval_agent = jax.device_put(agent, device=jax.devices('cpu')[0])
             else:

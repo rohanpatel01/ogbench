@@ -18,12 +18,18 @@ ENV_NAME=visual-antmaze-medium-stitch-v0
 cd /work/10993/rohanpatel01/vista/ogbench/impls
 
 # TODO: Update train_steps to be what we need to converge (note this will be the same for ACRO and HIQL so see if we need specify for each or keep same)
+# TODO: update steps_pre_train_acro
+# TODO: Update train_steps
+# TODO: Update eval_episodes
+# TODO: update dataset_path_train and dataset_path_val
 python main.py \
-    --exp_name='exp_4_2' \
-    --steps_pre_train_acro=10 \
+    --exp_name='exp_4_3' \
+    --using_distractions_dataset=1 \
+    --steps_pre_train_acro=1 \
     --train_steps=1 \
-    --use_acro_rep=0 \
-    --use_acro_for_reward=1 \
+    --eval_episodes=1 \
+    --use_acro_rep=1 \
+    --use_acro_for_reward=0 \
     --seed=0 \
     --dataset_path_train=$DATASET_PATH_TRAIN \
     --dataset_path_val=$DATASET_PATH_VAL \
@@ -36,7 +42,6 @@ python main.py \
     --agent.batch_size=256 \
     --agent.actor_p_randomgoal=0.5 \
     --agent.actor_p_trajgoal=0.5 \
-    --using_distractions_dataset=1 \
     --log_interval=1 \
     --eval_interval=100000 \
     --save_interval=100000 \

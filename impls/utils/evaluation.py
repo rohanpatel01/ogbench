@@ -3,8 +3,9 @@ from collections import defaultdict
 import jax
 import numpy as np
 from tqdm import trange
-# import imageio
 
+from absl import flags
+FLAGS = flags.FLAGS
 
 def supply_rng(f, rng=jax.random.PRNGKey(0)):
     """Helper function to split the random number generator key before each call to the function."""
@@ -70,23 +71,21 @@ def evaluate(
     for i in trange(num_eval_episodes + num_video_episodes):
         traj = defaultdict(list)
         should_render = i >= num_eval_episodes
-
-        observation, info = env.reset(options=dict(task_id=task_id, render_goal=should_render))
         
-        # imageio.imwrite('observation.png', observation)
+        observation, info = env.reset(options=dict(task_id=task_id, render_goal=should_render))
         # breakpoint()
-
+        print(f"[eval] observation shape: {observation.shape}, dtype: {observation.dtype}")
 
         goal = info.get('goal')
         goal_frame = info.get('goal_rendered')
 
-        # imageio.imwrite('goal_frame.png', goal)
-        # breakpoint()
-        
         done = False
         step = 0
         render = []
         while not done:
+            
+            # TODO: Need to pass observations and goal through ACRO encoder before passing through actor_fn?
+
             action = actor_fn(observations=observation, goals=goal, temperature=eval_temperature)
             action = np.array(action)
             if not config.get('discrete'):
@@ -96,18 +95,12 @@ def evaluate(
 
             next_observation, reward, terminated, truncated, info = env.step(action)
 
-            # imageio.imwrite('next_observation.png', next_observation)
-            # breakpoint()
-
             done = terminated or truncated
             step += 1
 
             if should_render and (step % video_frame_skip == 0 or done):
 
-                # breakpoint()
                 frame = env.render().copy()
-                # imageio.imwrite('rendered_frame.png', frame)
-
 
                 if goal_frame is not None:
                     render.append(np.concatenate([goal_frame, frame], axis=0))
