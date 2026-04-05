@@ -20,9 +20,10 @@ cd /work/10993/rohanpatel01/vista/ogbench/impls
 # TODO: Update train_steps to be what we need to converge (note this will be the same for ACRO and HIQL so see if we need specify for each or keep same)
 python main.py \
     --exp_name='exp_4_2' \
+    --steps_pre_train_acro=10 \
     --train_steps=1 \
-    --use_acro_rep=1 \
-    --use_acro_for_reward=0 \
+    --use_acro_rep=0 \
+    --use_acro_for_reward=1 \
     --seed=0 \
     --dataset_path_train=$DATASET_PATH_TRAIN \
     --dataset_path_val=$DATASET_PATH_VAL \

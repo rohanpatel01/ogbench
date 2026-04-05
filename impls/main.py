@@ -36,6 +36,8 @@ flags.DEFINE_string('restore_path', None, 'Restore path.')
 flags.DEFINE_integer('restore_epoch', None, 'Restore epoch.')
 
 flags.DEFINE_integer('train_steps', 1000000, 'Number of training steps.')
+flags.DEFINE_integer('steps_pre_train_acro', 100000, 'Number of steps to pre-train ACRO encoder.')
+
 flags.DEFINE_integer('log_interval', 5000, 'Logging interval.')
 flags.DEFINE_integer('eval_interval', 100000, 'Evaluation interval.')
 flags.DEFINE_integer('save_interval', 1000000, 'Saving interval.')
@@ -209,7 +211,19 @@ def train_loop(agent, train_dataset, val_dataset, config, env):
     eval_logger = CsvLogger(os.path.join(FLAGS.save_dir, 'eval.csv'))
     first_time = time.time()
     last_time = time.time()
-    for i in tqdm.tqdm(range(1, FLAGS.train_steps + 1), smoothing=0.1, dynamic_ncols=True):
+
+
+    if agent.config['agent_name'] == 'acro':
+        # Set number of timesteps to pre-train ACRO
+        train_steps = FLAGS.steps_pre_train_acro
+
+    else: 
+        # train_steps to train actual agent
+        train_steps = FLAGS.train_steps
+
+    for i in tqdm.tqdm(range(1, train_steps + 1), smoothing=0.1, dynamic_ncols=True):
+
+    # for i in tqdm.tqdm(range(1, FLAGS.train_steps + 1), smoothing=0.1, dynamic_ncols=True):
         # Update agent.
         batch = train_dataset.sample(config['batch_size'])
 
