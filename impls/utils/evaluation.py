@@ -74,7 +74,6 @@ def evaluate(
         
         observation, info = env.reset(options=dict(task_id=task_id, render_goal=should_render))
         # breakpoint()
-        print(f"[eval] observation shape: {observation.shape}, dtype: {observation.dtype}")
 
         goal = info.get('goal')
         goal_frame = info.get('goal_rendered')

@@ -227,7 +227,6 @@ def train_loop(agent, train_dataset, val_dataset, config, env):
         # Update agent.
         batch = train_dataset.sample(config['batch_size'])
         # breakpoint()
-        print(f"[train HIQL] observation shape: {batch['observations'].shape}, dtype: {batch['observations'].dtype}")
 
         agent, update_info = agent.update(batch)
 
@@ -246,7 +245,6 @@ def train_loop(agent, train_dataset, val_dataset, config, env):
 
         # Evaluate agent. But do not evaluate when we are pre-training the ACRO encoder
         if (agent.config['agent_name'] != 'acro') and (i == 1 or i % FLAGS.eval_interval == 0):
-            print("Evaluate agent: ", agent.config['agent_name'])
             if FLAGS.eval_on_cpu:
                 eval_agent = jax.device_put(agent, device=jax.devices('cpu')[0])
             else:
