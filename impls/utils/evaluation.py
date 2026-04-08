@@ -71,9 +71,9 @@ def evaluate(
     for i in trange(num_eval_episodes + num_video_episodes):
         traj = defaultdict(list)
         should_render = i >= num_eval_episodes
-        
+
         observation, info = env.reset(options=dict(task_id=task_id, render_goal=should_render))
-        # breakpoint()
+        # print(f"[eval] observation shape: {observation.shape}, dtype: {observation.dtype}")
 
         goal = info.get('goal')
         goal_frame = info.get('goal_rendered')
@@ -82,7 +82,7 @@ def evaluate(
         step = 0
         render = []
         while not done:
-            
+
             # TODO: Need to pass observations and goal through ACRO encoder before passing through actor_fn?
 
             action = actor_fn(observations=observation, goals=goal, temperature=eval_temperature)

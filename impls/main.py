@@ -73,8 +73,6 @@ def main(_):
     os.makedirs(FLAGS.save_dir, exist_ok=True)
     flag_dict = get_flag_dict()
 
-    # breakpoint()
-
     with open(os.path.join(FLAGS.save_dir, 'flags.json'), 'w') as f:
         json.dump(flag_dict, f)
 
@@ -117,15 +115,12 @@ def main(_):
         val_dataset = dataset_class(Dataset.create(**val_dataset), config)
 
 
-    # breakpoint()
     # # see what shape the train_dataset elements are. We might have a bug here because next_v_t in HIQL algo is mishaped.
     # # next_v_t should be (1024, ) I THINK but is really (1024, 64, 128). Not sure which is correct but I think should be (1024, ) bc that's the shape of the other stuff
     # #       that next_v_t is being operated with
     # batch = train_dataset.sample(4)
     # for k, v in batch.items():
     #     print(k, v.shape, v.dtype)
-
-    # breakpoint()
 
     acro_val_dataset = None
 
@@ -135,7 +130,6 @@ def main(_):
 
     # Pre-train ACRO
     if FLAGS.use_acro_for_reward or FLAGS.use_acro_rep:
-
         acro_config = acro.get_config()
         example_batch = train_dataset.sample(1)
 
@@ -145,9 +139,9 @@ def main(_):
             example_batch['actions'] = np.full_like(example_batch['actions'], env.action_space.n - 1)
 
         train_dataset_acro = dict(data_train)
-        val_dataset_acro = dict(data_val) 
+        val_dataset_acro = dict(data_val)
 
-        acro_train_dataset = ACRODataset(Dataset.create(**train_dataset_acro), acro_config)    
+        acro_train_dataset = ACRODataset(Dataset.create(**train_dataset_acro), acro_config)
         if val_dataset is not None:
             acro_val_dataset = ACRODataset(Dataset.create(**val_dataset_acro), acro_config)
 
@@ -160,7 +154,7 @@ def main(_):
             acro_agent = restore_agent(acro_agent, FLAGS.acro_restore_path)
         else:
             # Train ACRO
-            train_loop(acro_agent, acro_train_dataset, acro_val_dataset, acro_config, env)
+            train_loop(acro_agent, acro_train_dataset, acro_val_dataset, acro_config, env, step_offset=0)
             print("ACRO done pre-training")
         # Extract encoder definition and params
         # acro_encoder = acro_agent.network.select('encoder')
@@ -201,11 +195,14 @@ def main(_):
     if FLAGS.restore_path is not None:
         agent = restore_agent(agent, FLAGS.restore_path, FLAGS.restore_epoch)
 
-
-    train_loop(agent, train_dataset, val_dataset, config, env)
+    # train HIQL
+    if FLAGS.use_acro_for_reward or FLAGS.use_acro_rep:
+        train_loop(agent, train_dataset, val_dataset, config, env, step_offset=FLAGS.steps_pre_train_acro)
+    else:
+        train_loop(agent, train_dataset, val_dataset, config, env)
     print("Done training HIQL")
 
-def train_loop(agent, train_dataset, val_dataset, config, env):
+def train_loop(agent, train_dataset, val_dataset, config, env, step_offset=0):
     # Train agent.
     train_logger = CsvLogger(os.path.join(FLAGS.save_dir, 'train.csv'))
     eval_logger = CsvLogger(os.path.join(FLAGS.save_dir, 'eval.csv'))
@@ -217,16 +214,15 @@ def train_loop(agent, train_dataset, val_dataset, config, env):
         # Set number of timesteps to pre-train ACRO
         train_steps = FLAGS.steps_pre_train_acro
 
-    else: 
+    else:
         # train_steps to train actual agent
         train_steps = FLAGS.train_steps
 
     for i in tqdm.tqdm(range(1, train_steps + 1), smoothing=0.1, dynamic_ncols=True):
-
     # for i in tqdm.tqdm(range(1, FLAGS.train_steps + 1), smoothing=0.1, dynamic_ncols=True):
+        global_step = step_offset + i
         # Update agent.
         batch = train_dataset.sample(config['batch_size'])
-        # breakpoint()
 
         agent, update_info = agent.update(batch)
 
@@ -240,8 +236,8 @@ def train_loop(agent, train_dataset, val_dataset, config, env):
             train_metrics['time/epoch_time'] = (time.time() - last_time) / FLAGS.log_interval
             train_metrics['time/total_time'] = time.time() - first_time
             last_time = time.time()
-            wandb.log(train_metrics, step=i)
-            train_logger.log(train_metrics, step=i)
+            wandb.log(train_metrics, step=global_step)
+            train_logger.log(train_metrics, step=global_step)
 
         # Evaluate agent. But do not evaluate when we are pre-training the ACRO encoder
         if (agent.config['agent_name'] != 'acro') and (i == 1 or i % FLAGS.eval_interval == 0):
@@ -282,8 +278,8 @@ def train_loop(agent, train_dataset, val_dataset, config, env):
                 video = get_wandb_video(renders=renders, n_cols=num_tasks)
                 eval_metrics['video'] = video
 
-            wandb.log(eval_metrics, step=i)
-            eval_logger.log(eval_metrics, step=i)
+            wandb.log(eval_metrics, step=global_step)
+            eval_logger.log(eval_metrics, step=global_step)
 
         # Save agent.
         if i % FLAGS.save_interval == 0:

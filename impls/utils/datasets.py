@@ -405,7 +405,7 @@ class HGCDataset(GCDataset):
 @dataclasses.dataclass
 class ACRODataset:
     """Dataset class for ACRO.
-    
+
     This class extends Dataset to support sampling states_t and states_t+k. It reads the following
     additional key from the config:
     - acro_k_step: The number of steps between state_t and state_t+k.
@@ -414,7 +414,7 @@ class ACRODataset:
     dataset: Dataset
     config: Any
     preprocess_frame_stack: bool = True
-    
+
     def __post_init__(self):
         self.size = self.dataset.size
 
@@ -430,26 +430,29 @@ class ACRODataset:
                 stacked_observations = self.get_stacked_observations(np.arange(self.size))
                 self.dataset = Dataset(self.dataset.copy(dict(observations=stacked_observations)))
 
-    
+
     def sample(self, batch_size, idxs=None):
         """Sample a batch of transitions as follows:
                 observations_t, observation_t_k, actions_t.
             These three things are necessary and sufficient to train an ACRO encoder.
         """
-        
+
         if idxs is None:
             idxs = self.dataset.get_random_idxs(batch_size)
 
         batch = self.dataset.sample(batch_size, idxs)
         final_state_idxs = self.terminal_locs[np.searchsorted(self.terminal_locs, idxs)]
-        
+
+        # acro_k_step = self.config['acro_k_step']
+        acro_k_step = np.random.randint(1, self.config['acro_k_step'] + 1)
+
         if self.config['frame_stack'] is not None:
             batch['observations'] = self.get_observations(idxs)
             # if t + k exceeds a trajectory boundary, we just use the final state of that trajectory.
-            traj_k_idxs = np.minimum(idxs + self.config['acro_k_step'], final_state_idxs)
+            traj_k_idxs = np.minimum(idxs + acro_k_step, final_state_idxs)
             batch['observations_t_k'] = self.get_observations(traj_k_idxs)
         else:
-            batch['observations_t_k'] = self.dataset['observations'][np.minimum(idxs + self.config['acro_k_step'], final_state_idxs)]
+            batch['observations_t_k'] = self.dataset['observations'][np.minimum(idxs + acro_k_step, final_state_idxs)]
 
         return {
             'observations': batch['observations'],

@@ -223,13 +223,14 @@ class HIQLAgent(flax.struct.PyTreeNode):
         to obtain raw actions.
         """
 
-        # TODO: Must check whether observations and goals are batched. Will cause error during evaluation because evaluation
-        #       produces unbatched observations and goals so we must batch them first so networks expect the same shape during
-        #       training and evaluation
-        is_unbatched = (observations.ndim == 3)
-        if is_unbatched:
-            observations = jnp.expand_dims(observations, axis=0)
-            goals = jnp.expand_dims(goals, axis=0)
+        if FLAGS.use_acro_rep:
+            # TODO: Must check whether observations and goals are batched. Will cause error during evaluation because evaluation
+            #       produces unbatched observations and goals so we must batch them first so networks expect the same shape during
+            #       training and evaluation
+            is_unbatched = (observations.ndim == 3)
+            if is_unbatched:
+                observations = jnp.expand_dims(observations, axis=0)
+                goals = jnp.expand_dims(goals, axis=0)
 
 
         high_seed, low_seed = jax.random.split(seed)
@@ -244,10 +245,11 @@ class HIQLAgent(flax.struct.PyTreeNode):
         if not self.config['discrete']:
             actions = jnp.clip(actions, -1, 1)
 
-        # If we added a batch dim just to please the network forward prop we need to remove the batch dim so
-        # the actions is what would be expected
-        if is_unbatched:
-            actions = jnp.squeeze(actions, axis=0)  # (1, 8) → (8,)
+        if FLAGS.use_acro_rep:
+            # If we added a batch dim just to please the network forward prop we need to remove the batch dim so
+            # the actions is what would be expected
+            if is_unbatched:
+                actions = jnp.squeeze(actions, axis=0)  # (1, 8) → (8,)
 
         return actions
 
@@ -324,24 +326,28 @@ class HIQLAgent(flax.struct.PyTreeNode):
                 else:
                     return encoder_module() # Instantiate encoder that is defined in config
 
+            if FLAGS.use_acro_rep:
+                acro_enc = encoder_module
+            else:
+                acro_enc = None
+
             # Value: V(encoder^V(s), phi([s; g]))
-            value_encoder_def = GCEncoder(state_encoder=get_encoder_instance(), concat_encoder=goal_rep_def)
-            target_value_encoder_def = GCEncoder(state_encoder=get_encoder_instance(), concat_encoder=goal_rep_def)
+            value_encoder_def = GCEncoder(state_encoder=get_encoder_instance(), concat_encoder=goal_rep_def, acro_encoder=acro_enc)
+            target_value_encoder_def = GCEncoder(state_encoder=get_encoder_instance(), concat_encoder=goal_rep_def, acro_encoder=acro_enc)
             # Low-level actor: pi^l(. | encoder^l(s), phi([s; w]))
-            low_actor_encoder_def = GCEncoder(state_encoder=get_encoder_instance(), concat_encoder=goal_rep_def)
+            low_actor_encoder_def = GCEncoder(state_encoder=get_encoder_instance(), concat_encoder=goal_rep_def, acro_encoder=acro_enc)
 
             # High-level actor: pi^h(. | encoder^h([s; g]))
             # Note: I added the state_encoder just so we can pass the ACROEncoder so we can encode the observations and goals.
             if FLAGS.use_acro_rep:
-                # TODO: DUBIOUS
-                high_actor_encoder_def = GCEncoder(state_encoder=get_encoder_instance(), concat_encoder=get_encoder_instance())
+                # TODO: DUBIOUS FOR REP
+                # high_actor_encoder_def = GCEncoder(state_encoder=get_encoder_instance(), concat_encoder=get_encoder_instance())
+                high_actor_encoder_def = GCEncoder(acro_encoder=get_encoder_instance(), concat_encoder=get_encoder_instance())
             else:
                 high_actor_encoder_def = GCEncoder(concat_encoder=encoder_module())
 
-
         else:
             # State-based environments only use the pre-defined shared encoder for subgoal representations.
-
             # Value: V(s, phi([s; g]))
             value_encoder_def = GCEncoder(state_encoder=Identity(), concat_encoder=goal_rep_def)
             target_value_encoder_def = GCEncoder(state_encoder=Identity(), concat_encoder=goal_rep_def)
@@ -410,14 +416,9 @@ class HIQLAgent(flax.struct.PyTreeNode):
         if FLAGS.use_acro_rep or FLAGS.use_acro_for_reward:
             network_info["acro_encoder"] = (acro_encoder, (ex_observations))
 
-
-
-
-
         networks = {k: v[0] for k, v in network_info.items()}
         network_args = {k: v[1] for k, v in network_info.items()}
 
-        # breakpoint()
         network_def = ModuleDict(networks)
         network_tx = optax.adam(learning_rate=config['lr'])
         network_params = network_def.init(init_rng, **network_args)['params']

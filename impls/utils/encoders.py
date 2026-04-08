@@ -114,6 +114,7 @@ class GCEncoder(nn.Module):
     state_encoder: nn.Module = None
     goal_encoder: nn.Module = None
     concat_encoder: nn.Module = None
+    acro_encoder: nn.Module = None
 
     @nn.compact
     def __call__(self, observations, goals=None, goal_encoded=False):
@@ -135,9 +136,9 @@ class GCEncoder(nn.Module):
                     reps.append(self.goal_encoder(goals))
                 if self.concat_encoder is not None:
                     # Encode observations and goals with ACRO before passing through the concat_encoder (Impalla small)
-                    if (FLAGS.use_acro_rep) and (self.state_encoder is not None):
-                        observations = self.state_encoder(observations)
-                        goals = self.state_encoder(goals)
+                    if (FLAGS.use_acro_rep) and (self.acro_encoder is not None):
+                        observations = self.acro_encoder(observations)
+                        goals = self.acro_encoder(goals)
 
                     # Note: I think we accidentally made concat_encoder = ACROEncoder and that's why we're having issues with shape. concat_encoder even when we use ACRO should be MLP
                     reps.append(self.concat_encoder(jnp.concatenate([observations, goals], axis=-1)))

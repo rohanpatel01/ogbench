@@ -16,7 +16,6 @@ class ACROAgent(flax.struct.PyTreeNode):
     rng: Any
     network: Any
     config: Any = nonpytree_field()
-    # encoder:... TODO: need to make encoder visible outside ACROAgent so we can pass it into HIQL's own networks
 
     @jax.jit
     def loss(self, batch, grad_params, rng=None):
@@ -34,7 +33,7 @@ class ACROAgent(flax.struct.PyTreeNode):
         # losses
         info = {}
         loss = 0
-        
+
         if self.config['discrete']:
             action_loss = optax.losses.softmax_cross_entropy_with_integer_labels(
                 action_preds, actions_t.squeeze(-1)
@@ -43,13 +42,12 @@ class ACROAgent(flax.struct.PyTreeNode):
             action_loss = ((action_preds - actions_t) ** 2).mean()
 
 
-        loss += action_loss 
+        loss += action_loss
         info['action_loss'] = action_loss
 
         return loss, info
 
 
-    
     @jax.jit
     def update(self, batch):
         """Update the agent and return a new agent with information dictionary."""
@@ -61,7 +59,6 @@ class ACROAgent(flax.struct.PyTreeNode):
         new_network, info = self.network.apply_loss_fn(loss_fn=loss_fn)
 
         return self.replace(network=new_network, rng=new_rng), info
-
 
 
     @classmethod
@@ -82,9 +79,9 @@ class ACROAgent(flax.struct.PyTreeNode):
         """
         rng = jax.random.PRNGKey(seed)
         rng, init_rng = jax.random.split(rng, 2)
-        
+
         action_dim = ex_actions.shape[-1]
-        
+
         ex_acro_pred_input = jnp.zeros((1, 2 * config['rep_dim']))
 
 
@@ -99,8 +96,7 @@ class ACROAgent(flax.struct.PyTreeNode):
             hidden_dims=(*config['hidden_dims'], action_dim),
             activations=nn.activation.relu
         )
-        
-        # TODO: 
+
         network_info = dict(
             encoder=(encoder_def, (ex_observations)),
             inverse_dynamics=(inverse_dynamics_def, (ex_acro_pred_input))
@@ -117,10 +113,9 @@ class ACROAgent(flax.struct.PyTreeNode):
         # params['modules_target_critic'] = params['modules_critic']
 
         return cls(rng, network=network, config=flax.core.FrozenDict(**config))
-        
 
 
-# TODO
+
 def get_config():
     config = ml_collections.ConfigDict(
         dict(
@@ -135,7 +130,7 @@ def get_config():
             acro_k_step=15,  # acro k step.
             rep_dim=256,  # ACRO representation dimension.
             num_conv_filters=32,
-            kernel_size=3,    
+            kernel_size=3,
             # Dataset hyperparameters.
             dataset_class='ACRODataset',  # Dataset class name.
             p_aug=0.0,  # Probability of applying image augmentation.
