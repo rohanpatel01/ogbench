@@ -45,7 +45,7 @@ class HIQLAgent(flax.struct.PyTreeNode):
             encoded_goals = self.network.select('acro_encoder')(batch['value_goals'])
             batch['rewards'] = -jnp.linalg.norm(encoded_goals - encoded_obs, axis=-1) # default is 2 norm for vectors (single-axis reductions)
 
-        # TODO: 
+        # TODO:
         # batch['next_observations'] = self.network.select('acro_encoder')(batch['next_observations'])
         # batch['value_goals'] = self.network.select('acro_encoder')(batch['value_goals'])
 
@@ -87,7 +87,7 @@ class HIQLAgent(flax.struct.PyTreeNode):
 
         # Compute the goal representations of the subgoals.
         # Note we first encode the observation and low_actor_goal through ACRO.
-        # We only do this because when use_acro_rep=1 then we need the goal_rep network to be a MLP, 
+        # We only do this because when use_acro_rep=1 then we need the goal_rep network to be a MLP,
         # and thus we need to pass the observeration and goal through ACRO encoder before going through goal_rep network.
         if FLAGS.use_acro_rep:
             observations = self.network.select('acro_encoder')(batch['observations'])
@@ -96,17 +96,17 @@ class HIQLAgent(flax.struct.PyTreeNode):
             observations = batch['observations']
             low_actor_goals = batch['low_actor_goals']
 
-        
+
         goal_reps = self.network.select('goal_rep')(
             jnp.concatenate([observations, low_actor_goals], axis=-1),
             params=grad_params,
         )
-        
+
         if not self.config['low_actor_rep_grad']:
             # Stop gradients through the goal representations.
             goal_reps = jax.lax.stop_gradient(goal_reps)
 
-        
+
         dist = self.network.select('low_actor')(batch['observations'], goal_reps, goal_encoded=True, params=grad_params)
         log_prob = dist.log_prob(batch['actions'])
 
@@ -142,7 +142,7 @@ class HIQLAgent(flax.struct.PyTreeNode):
 
         # Compute the goal representations of the subgoals.
         # Note we first encode the observation and low_actor_goal through ACRO.
-        # We only do this because when use_acro_rep=1 then we need the goal_rep network to be a MLP, 
+        # We only do this because when use_acro_rep=1 then we need the goal_rep network to be a MLP,
         # and thus we need to pass the observeration and goal through ACRO encoder before going through goal_rep network.
         if FLAGS.use_acro_rep:
             observations = self.network.select('acro_encoder')(batch['observations'])
@@ -223,7 +223,7 @@ class HIQLAgent(flax.struct.PyTreeNode):
         to obtain raw actions.
         """
 
-        # TODO: Must check whether observations and goals are batched. Will cause error during evaluation because evaluation 
+        # TODO: Must check whether observations and goals are batched. Will cause error during evaluation because evaluation
         #       produces unbatched observations and goals so we must batch them first so networks expect the same shape during
         #       training and evaluation
         is_unbatched = (observations.ndim == 3)
@@ -279,7 +279,7 @@ class HIQLAgent(flax.struct.PyTreeNode):
 
         # Define (state-dependent) subgoal representation phi([s; g]) that outputs a length-normalized vector.
         if config['encoder'] is not None:
-            
+
             if FLAGS.use_acro_rep:
                 assert(acro_encoder is not None)
 
@@ -295,7 +295,7 @@ class HIQLAgent(flax.struct.PyTreeNode):
                 goal_rep_seq = [encoder_module()]
         else:
             goal_rep_seq = []
-            
+
         goal_rep_seq.append(
             MLP(
                 hidden_dims=(*config['value_hidden_dims'], config['rep_dim']),
@@ -332,7 +332,11 @@ class HIQLAgent(flax.struct.PyTreeNode):
 
             # High-level actor: pi^h(. | encoder^h([s; g]))
             # Note: I added the state_encoder just so we can pass the ACROEncoder so we can encode the observations and goals.
-            high_actor_encoder_def = GCEncoder(state_encoder=get_encoder_instance(), concat_encoder=goal_rep_def)
+            if FLAGS.use_acro_rep:
+                # TODO: DUBIOUS
+                high_actor_encoder_def = GCEncoder(state_encoder=get_encoder_instance(), concat_encoder=get_encoder_instance())
+            else:
+                high_actor_encoder_def = GCEncoder(concat_encoder=encoder_module())
 
 
         else:

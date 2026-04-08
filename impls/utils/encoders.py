@@ -122,7 +122,6 @@ class GCEncoder(nn.Module):
         If `goal_encoded` is True, `goals` is assumed to be already encoded representations. In this case, either
         `goal_encoder` or `concat_encoder` must be None.
         """
-        # breakpoint()
         reps = []
         if self.state_encoder is not None:
             reps.append(self.state_encoder(observations))
@@ -135,13 +134,11 @@ class GCEncoder(nn.Module):
                 if self.goal_encoder is not None:
                     reps.append(self.goal_encoder(goals))
                 if self.concat_encoder is not None:
-                    
                     # Encode observations and goals with ACRO before passing through the concat_encoder (Impalla small)
                     if (FLAGS.use_acro_rep) and (self.state_encoder is not None):
                         observations = self.state_encoder(observations)
                         goals = self.state_encoder(goals)
 
-                    # breakpoint()
                     # Note: I think we accidentally made concat_encoder = ACROEncoder and that's why we're having issues with shape. concat_encoder even when we use ACRO should be MLP
                     reps.append(self.concat_encoder(jnp.concatenate([observations, goals], axis=-1)))
 
@@ -153,7 +150,7 @@ class GCEncoder(nn.Module):
 class ACROEncoder(nn.Module):
     """Wrapper to use pre-trained ACRO encoder in other agents."""
     acro_agent: nn.Module  # Will be set at runtime
-    
+
     def __call__(self, observations):
         """Extract encoder from pre-trained ACRO agent."""
         return self.acro_agent.network.select('encoder')(observations)
