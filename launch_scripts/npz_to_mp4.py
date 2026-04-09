@@ -4,8 +4,8 @@ import numpy as np
 import imageio
 import os
 
-DATA_FILE = '/work/10993/rohanpatel01/vista/ogbench/data_gen_scripts/data/distracted_from_downloaded/new/visual-antmaze-medium-stitch-v0-distracted.npz'
-OUTPUT_DIR = 'trajectories_videos/distracted_from_downloaded/new'
+DATA_FILE = '/work/10993/rohanpatel01/vista/ogbench/data_gen_scripts/data/final_save_5499/visual-antmaze-medium-stitch-v0-distracted.npz'
+OUTPUT_DIR = 'trajectories_videos/final_save_5499_distracted_old_bear_dog'
 MAX_VIDEOS = 10
 
 
