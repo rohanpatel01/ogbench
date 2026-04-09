@@ -63,7 +63,7 @@ flags.DEFINE_string('exp_name', "Default_Exp_Name", 'Name the experiment will sh
 flags.DEFINE_string('acro_restore_path', None, 'Path to saved ACRO model weights.')
 
 flags.DEFINE_string('davis_dataset_path', '/work/10993/rohanpatel01/vista/DAVIS/JPEGImages/480p', "Path to davis images")
-flags.DEFINE_string('dataset_download_dir', '/work/11247/evankuo/vista/ogbench/data_gen_scripts/data')  # for clean data downloads
+flags.DEFINE_string('dataset_download_dir', '/work/11247/evankuo/vista/ogbench/data_gen_scripts/data', 'Path for clean data download')  # for clean data downloads
 flags.DEFINE_list('specific_distractor', None, 'Specific distractor(s) for the evaluation') # --specific_distractor=bear,dog
 flags.DEFINE_integer('freeze_acro_rep', 0, '1: Freeze the acro representation, 0: dont freeze')
 

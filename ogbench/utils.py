@@ -13,7 +13,8 @@ from absl import flags
 FLAGS = flags.FLAGS
 
 # DEFAULT_DATASET_DIR = '/work/10993/rohanpatel01/vista/ogbench/data_gen_scripts/data' # Changed to match where my data is.   Orig: ~/.ogbench/data
-DEFAULT_DATASET_DIR = FLAGS.dataset_download_dir
+# DEFAULT_DATASET_DIR = FLAGS.dataset_download_dir
+DEFAULT_DATASET_DIR = '/home/ekuo/ogbench/data_gen_scripts/data'
 DATASET_URL = 'https://rail.eecs.berkeley.edu/datasets/ogbench'
 
 def load_dataset(dataset_path, ob_dtype=np.float32, action_dtype=np.float32, compact_dataset=False, add_info=False):
