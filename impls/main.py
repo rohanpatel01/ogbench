@@ -62,6 +62,11 @@ flags.DEFINE_integer('use_acro_for_reward', 0, 'Whether to use ACRO as reward.')
 flags.DEFINE_string('exp_name', "Default_Exp_Name", 'Name the experiment will show on WANDB')
 flags.DEFINE_string('acro_restore_path', None, 'Path to saved ACRO model weights.')
 
+flags.DEFINE_string('davis_dataset_path', '/work/10993/rohanpatel01/vista/DAVIS/JPEGImages/480p', "Path to davis images")
+flags.DEFINE_string('dataset_download_dir', '/work/11247/evankuo/vista/ogbench/data_gen_scripts/data')  # for clean data downloads
+flags.DEFINE_list('specific_distractor', None, 'Specific distractor(s) for the evaluation') # --specific_distractor=bear,dog
+flags.DEFINE_integer('freeze_acro_rep', 0, '1: Freeze the acro representation, 0: dont freeze')
+
 
 def main(_):
     # Set up logger.
@@ -101,7 +106,9 @@ def main(_):
     if (FLAGS.using_distractions_dataset):
         env = ImageDistractionWrapper(
             env,
-            distracting_images_dir='/work/10993/rohanpatel01/vista/DAVIS/JPEGImages/480p/',
+            # distracting_images_dir='/work/10993/rohanpatel01/vista/DAVIS/JPEGImages/480p/',
+            distracting_images_dir=FLAGS.davis_dataset_path,
+            specific_distractor=FLAGS.specific_distractor,
         )
 
 
@@ -158,7 +165,7 @@ def main(_):
             print("ACRO done pre-training")
         # Extract encoder definition and params
         # acro_encoder = acro_agent.network.select('encoder')
-        acro_encoder = get_acro_encoder(acro_agent)
+        acro_encoder = get_acro_encoder(acro_agent, frozen=bool(FLAGS.freeze_acro_rep))
 
     else:
         acro_encoder = None

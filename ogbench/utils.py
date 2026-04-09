@@ -9,10 +9,11 @@ from tqdm import tqdm
 
 from ogbench.relabel_utils import add_oracle_reps, relabel_dataset
 
-
+from absl import flags
+FLAGS = flags.FLAGS
 
 # DEFAULT_DATASET_DIR = '/work/10993/rohanpatel01/vista/ogbench/data_gen_scripts/data' # Changed to match where my data is.   Orig: ~/.ogbench/data
-DEFAULT_DATASET_DIR = '/work/11247/evankuo/vista/ogbench/data_gen_scripts/data'
+DEFAULT_DATASET_DIR = FLAGS.dataset_download_dir
 DATASET_URL = 'https://rail.eecs.berkeley.edu/datasets/ogbench'
 
 def load_dataset(dataset_path, ob_dtype=np.float32, action_dtype=np.float32, compact_dataset=False, add_info=False):
@@ -300,7 +301,8 @@ class ImageDistractionWrapper(gymnasium.Wrapper):
         # elif
         # breakpoint()
         if specific_distractor is not None:
-            self._folder_names = [specific_distractor]
+            # self._folder_names = [specific_distractor] # old way
+            self._folder_names = specific_distractor
 
         else:
             self._folder_names = self._folder_names_difficulty_map[difficulty]

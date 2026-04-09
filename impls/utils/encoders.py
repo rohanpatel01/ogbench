@@ -3,6 +3,7 @@ from typing import Sequence
 
 import flax.linen as nn
 import jax.numpy as jnp
+import jax
 
 from utils.networks import MLP
 
@@ -151,16 +152,18 @@ class GCEncoder(nn.Module):
 class ACROEncoder(nn.Module):
     """Wrapper to use pre-trained ACRO encoder in other agents."""
     acro_agent: nn.Module  # Will be set at runtime
+    frozen: bool = False
 
     def __call__(self, observations):
         """Extract encoder from pre-trained ACRO agent."""
-        return self.acro_agent.network.select('encoder')(observations)
+        out = self.acro_agent.network.select('encoder')(observations)
+        return jax.lax.stop_gradient(out) if self.frozen else out
 
 
-def get_acro_encoder(acro_agent):
+def get_acro_encoder(acro_agent, frozen=False):
     """Factory function to create ACRO encoder from pre-trained agent."""
     # return functools.partial(ACROEncoder, acro_agent=acro_agent)
-    return ACROEncoder(acro_agent=acro_agent)
+    return ACROEncoder(acro_agent=acro_agent, frozen=frozen)
 
 
 encoder_modules = {
