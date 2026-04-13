@@ -16,7 +16,7 @@ from agents import agents
 from ml_collections import config_flags
 from utils.datasets import Dataset, GCDataset, HGCDataset, ACRODataset
 from utils.env_utils import make_env_and_datasets
-from utils.evaluation import evaluate
+from utils.evaluation import evaluate, evaluate_acro
 from utils.flax_utils import restore_agent, save_agent
 from utils.log_utils import CsvLogger, get_exp_name, get_flag_dict, get_wandb_video, setup_wandb
 
@@ -91,8 +91,10 @@ def main(_):
         data_train = np.load(FLAGS.dataset_path_train)
         data_val = np.load(FLAGS.dataset_path_val)
         train_dataset = dict(data_train)   # keys: observations, actions, rewards, terminals, etc.
-        # val_dataset = dict(data_val)           # or split off a slice if you want validation
-        val_dataset = None # making None because val_dataset has issue where data['terminals'][-1] errors out <-- need to figure out why but in mean time we can just try training with train dataset only
+        val_dataset = dict(data_val)           # or split off a slice if you want validation
+        # val_dataset = None # making None because val_dataset has issue where data['terminals'][-1] errors out <-- need to figure out why but in mean time we can just try training with train dataset only
+        assert 'terminals' in val_dataset, "terminals key missing!"
+        assert np.sum(val_dataset['terminals'] == 1) > 0, "No terminals in dataset!"
 
     else:
         # Allow their code to download the dataset corresponding to the specified env_name
@@ -247,7 +249,13 @@ def train_loop(agent, train_dataset, val_dataset, config, env, step_offset=0):
             train_logger.log(train_metrics, step=global_step)
 
         # Evaluate agent. But do not evaluate when we are pre-training the ACRO encoder
-        if (agent.config['agent_name'] != 'acro') and (i == 1 or i % FLAGS.eval_interval == 0):
+
+        if (agent.config['agent_name'] == 'acro') and (i == 1 or i % FLAGS.eval_interval == 0):
+
+            evaluate_acro(agent, train_dataset, val_dataset)
+
+        elif (i == 1 or i % FLAGS.eval_interval == 0):
+
             if FLAGS.eval_on_cpu:
                 eval_agent = jax.device_put(agent, device=jax.devices('cpu')[0])
             else:

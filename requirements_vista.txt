@@ -44,7 +44,6 @@ mdurl==0.1.2
 ml_collections==1.1.0
 ml_dtypes==0.5.4
 moviepy==2.2.1
-mpi4py==3.1.1
 msgpack==1.1.2
 mujoco==3.6.0
 mypy_extensions==1.1.0
@@ -67,7 +66,7 @@ opt_einsum==3.4.0
 optax==0.2.6
 orbax-checkpoint==0.11.33
 orbax-export==0.0.8
-packaging @ file:///home/task_176104874243446/conda-bld/packaging_1761049080023/work
+packaging
 pillow==11.3.0
 platformdirs==4.9.4
 proglog==0.1.12

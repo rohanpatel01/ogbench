@@ -3,7 +3,7 @@ from collections import defaultdict
 import jax
 import numpy as np
 from tqdm import trange
-
+import wandb
 from absl import flags
 FLAGS = flags.FLAGS
 
@@ -34,6 +34,78 @@ def add_to(dict_of_lists, single_dict):
     """Append values to the corresponding lists in the dictionary."""
     for k, v in single_dict.items():
         dict_of_lists[k].append(v)
+
+
+def L2_Rewards_from_acro(acro_agent, train_dataset, val_dataset):
+    
+    results = {}
+    
+    for dataset_name, dataset in [('train', train_dataset), ('val', val_dataset)]:
+        
+        breakpoint()
+
+        all_l2_distances = []
+        
+        batch_size = acro_agent.config['batch_size']
+
+        # TODO: Note: dataset.sample(batch_size) does NOT return a trajecotry. It just returns a batch of observations.
+        #       We need to look into how we can get a trajectory
+        batch_traj = dataset.sample(batch_size)
+        observations = batch_traj['observations']  # Shape: (batch_size, H, W, C)
+        
+        encoded_obs = acro_agent.network.select('encoder')(observations)    # should be [batch_size, traj_len, latent_dim]
+        
+        # Get the last observation of each trajectory and replicate it
+        # Assuming trajectories are concatenated, get last index of each trajectory
+        # You may need to adjust this based on how your dataset structures batch samples
+        last = encoded_obs[:, -1:, :]
+        encoded_last_obs = jax.numpy.broadcast_to(last, encoded_obs.shape)  # should be [batch_size, traj_len, latent_dim]
+
+
+        # last_obs_encoded = encoded_obs[-batch_size:]  # Last observation from each trajectory
+        # last_obs_replicated = np.repeat(last_obs_encoded, len(encoded_obs) // batch_size, axis=0)  # Shape: (batch_size * traj_len, latent_dim)
+        
+        # Compute -L2 distance from each observation to the corresponding trajectory's last observation
+        l2_distances = -np.linalg.norm(encoded_obs - encoded_last_obs, axis=1)  # Shape: (batch_size * traj_len,)
+        
+        # Compute statistics
+        mean_dist = np.mean(l2_distances)
+        std_dist = np.std(l2_distances)
+        min_dist = np.min(l2_distances)
+        max_dist = np.max(l2_distances)
+        
+        # Log statistics
+        wandb.log({
+            f'acro_eval/{dataset_name}_l2_mean': mean_dist,
+            f'acro_eval/{dataset_name}_l2_std': std_dist,
+            f'acro_eval/{dataset_name}_l2_min': min_dist,
+            f'acro_eval/{dataset_name}_l2_max': max_dist,
+        })
+        
+        results[dataset_name] = {
+            'all_distances': l2_distances,
+            'mean': mean_dist,
+            'std': std_dist,
+            'min': min_dist,
+            'max': max_dist,
+        }
+    
+    return results
+    
+
+
+
+def evaluate_acro(acro_agent, train_dataset, val_dataset):
+
+    results = {}
+    results.update(L2_Rewards_from_acro(acro_agent, train_dataset, val_dataset))
+
+
+
+    
+
+
+
 
 
 def evaluate(

@@ -9,6 +9,7 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_string('distraction_images_dir', None, 'Directory of DAVIS distraction images.')
 flags.DEFINE_string('env_name', 'antmaze-large-navigate-v0', 'Environment (dataset) name.')
+flags.DEFINE_list('specific_distractor', None, 'Specific distractor(s) for the evaluation') # --specific_distractor=bear,dog
 
 
 config_flags.DEFINE_config_file('agent', 'agents/gciql.py', lock_config=False)
@@ -21,7 +22,7 @@ def main(_):
     config = FLAGS.agent
     env, train_dataset, val_dataset = make_env_and_datasets(FLAGS.env_name) # , frame_stack=config['frame_stack']
 
-    env = ImageDistractionWrapper(env, specific_distractor='bear', distracting_images_dir=FLAGS.distraction_images_dir)
+    env = ImageDistractionWrapper(env, specific_distractor=FLAGS.specific_distractor, distracting_images_dir=FLAGS.distraction_images_dir)
     env.reset()
     
 
@@ -30,7 +31,7 @@ def main(_):
     next_observations = []
 
     for i, (obs, next_obs) in enumerate((zip(train_dataset['observations'], train_dataset['next_observations']))):
-
+        break   # TODO: just here for debugging - remove later
         obs = env._add_distraction(obs)
         observations.append(obs)
 
@@ -75,6 +76,8 @@ def main(_):
         
         # reset so the distractor video resets
         if val_dataset['terminals'][i]:
+            breakpoint()    # TODO: just here for debugging - remove later
+            break           # TODO: just here for debugging - remove later
             env.reset()
 
         # For debugging - remove after
@@ -85,7 +88,10 @@ def main(_):
     val_dataset['next_observations'] = np.array(next_observations_val)
 
 
-
+    breakpoint()
+    assert 'terminals' in val_dataset, "terminals key missing!"
+    assert np.sum(val_dataset['terminals'] == 1) > 0, "No terminals in dataset!"
+    breakpoint()
 
     # Save generated distracted dataset
     output_dir = '/work/10993/rohanpatel01/vista/ogbench/data_gen_scripts/data/distracted_from_downloaded/new'
@@ -96,7 +102,7 @@ def main(_):
     # for key in train_dataset:
     #     train_dataset[key] = train_dataset[key][:DEBUG_MAX_STEPS]
 
-
+    
 
     np.savez(
         os.path.join(output_dir, 'visual-antmaze-medium-stitch-v0-distracted.npz'),

@@ -47,6 +47,8 @@ class ACROAgent(flax.struct.PyTreeNode):
 
         return loss, info
 
+    def total_loss(self, batch, grad_params, rng=None):
+        return self.loss(batch, grad_params, rng)
 
     @jax.jit
     def update(self, batch):
