@@ -197,7 +197,7 @@ def make_env_and_datasets(
     if dataset_path is None:
         dataset_dir = os.path.expanduser(dataset_dir)
         print("Downloading original OGBench datasets")
-        # download_datasets([dataset_name], dataset_dir)    # TODO: just commented this out for debugging. Put this back after
+        download_datasets([dataset_name], dataset_dir)    # TODO: just commented this out for debugging. Put this back after
         train_dataset_path = os.path.join(dataset_dir, f'{dataset_name}.npz')
         val_dataset_path = os.path.join(dataset_dir, f'{dataset_name}-val.npz')
     else:
