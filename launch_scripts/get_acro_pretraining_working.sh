@@ -9,13 +9,23 @@ export MUJOCO_GL=egl
 source /data/rohanp/miniconda3/etc/profile.d/conda.sh
 conda activate /data/rohanp/miniconda3/envs/ogbench
 
-DATASET_PATH_TRAIN=/data/rohanp/ogbench/data_gen_scripts/data/bear_single_distractor_dataset/new/visual-antmaze-medium-stitch-v0-distracted.npz
-DATASET_PATH_VAL=/data/rohanp/ogbench/data_gen_scripts/data/bear_single_distractor_dataset/new/visual-antmaze-medium-stitch-v0-distracted-val.npz
+
+
+
+# DATASET_PATH_TRAIN=/data/rohanp/ogbench/data_gen_scripts/data/bear_single_distractor_dataset/new/visual-antmaze-medium-stitch-v0-distracted.npz
+# DATASET_PATH_VAL=/data/rohanp/ogbench/data_gen_scripts/data/bear_single_distractor_dataset/new/visual-antmaze-medium-stitch-v0-distracted-val.npz
 
 # Smaller dataset just to test compilation
 # TODO: Note that these were not generated from their downloaded data rather we generated these. So only use to test compilation faster - not actual debugging
 # DATASET_PATH_TRAIN=/data/rohanp/ogbench/data_gen_scripts/data/intermediate_save_3/visual-antmaze-medium-stitch-v0-distracted.npz
 # DATASET_PATH_VAL=/data/rohanp/ogbench/data_gen_scripts/data/intermediate_save_3/visual-antmaze-medium-stitch-v0-distracted-val.npz
+
+# Dog and bear distraction dataset. Is smaller ~12GB
+DATASET_PATH_TRAIN=/data/rohanp/ogbench/data_gen_scripts/data/bear_dog_distractor_dataset/visual-antmaze-medium-stitch-v0-distracted.npz
+DATASET_PATH_VAL=/data/rohanp/ogbench/data_gen_scripts/data/bear_dog_distractor_dataset/visual-antmaze-medium-stitch-v0-distracted-val.npz
+
+
+
 
 
 DAVIS_DATASET_PATH=/data/rohanp/DAVIS/JPEGImages/480p

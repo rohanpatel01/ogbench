@@ -3,6 +3,7 @@ from ogbench.utils import make_env_and_datasets, ImageDistractionWrapper
 from absl import app, flags
 from ml_collections import config_flags
 import os
+from tqdm import tqdm
 
 
 FLAGS = flags.FLAGS
@@ -29,32 +30,45 @@ def main(_):
     # Generate distracted version of dataset for train dataset
     observations = []
     next_observations = []
+    MAX_NUM_TRAJECTORIES = 256  # 1 batch
+    train_traj_count = 0
+    val_traj_count = 0
 
-    for i, (obs, next_obs) in enumerate((zip(train_dataset['observations'], train_dataset['next_observations']))):
-        break   # TODO: just here for debugging - remove later
-        obs = env._add_distraction(obs)
-        observations.append(obs)
+    train_bar = tqdm(total=MAX_NUM_TRAJECTORIES)
 
-        # ignore output because we just want to augment downloaded dataset with our distractions
-        env.step(train_dataset['actions'][i])    # Just want to step forward the environment so the next distractor loads
+    while (train_traj_count < MAX_NUM_TRAJECTORIES):
+        for i, (obs, next_obs) in enumerate((zip(train_dataset['observations'], train_dataset['next_observations']))):
+            # break   # TODO: just here for debugging - remove later
+            obs = env._add_distraction(obs)
+            observations.append(obs)
 
-        next_obs = env._add_distraction(next_obs)
-        next_observations.append(next_obs)
+            # ignore output because we just want to augment downloaded dataset with our distractions
+            env.step(train_dataset['actions'][i])    # Just want to step forward the environment so the next distractor loads
 
-        # Note: We reset after we give distraction to next_observation because next_observation (when terminals[i] == 1) will be the last observation
-        #       of the traj. So we want to reset after so the distraction remains consistent and doesn't reset at the last frame
-    
-        # reset so the distractor video resets  
-        if train_dataset['terminals'][i]:
-            env.reset()
+            next_obs = env._add_distraction(next_obs)
+            next_observations.append(next_obs)
+
+            # Note: We reset after we give distraction to next_observation because next_observation (when terminals[i] == 1) will be the last observation
+            #       of the traj. So we want to reset after so the distraction remains consistent and doesn't reset at the last frame
         
-        # For debugging - remove after
-        # if i >= DEBUG_MAX_STEPS:
-        #     break
+            # reset so the distractor video resets  
+            if train_dataset['terminals'][i]:
+                env.reset()
+                train_traj_count += 1
+                train_bar.update(1)
+                # if train_traj_count >= MAX_NUM_TRAJECTORIES:  # TODO: I just want a small dataset that I can debug
 
+        
+    # TODO: make sure to grab the other fields of the dataset based on how many observations we sampled in the above loop
+    n_train = len(observations)
     train_dataset['observations'] = np.array(observations)
     train_dataset['next_observations'] = np.array(next_observations)
+    for key in train_dataset:
+        if key not in ('observations', 'next_observations'):
+            train_dataset[key] = train_dataset[key][:n_train]
 
+    assert 'terminals' in train_dataset, "terminals key missing!"
+    assert np.sum(train_dataset['terminals'] == 1) > 0, "No terminals in train_dataset!"
 
 
 
@@ -62,39 +76,46 @@ def main(_):
     observations_val = []
     next_observations_val = []
 
-    for i, (obs, next_obs) in enumerate((zip(val_dataset['observations'], val_dataset['next_observations']))):
-
-        obs = env._add_distraction(obs)
-        observations_val.append(obs)
-
-        # ignore output because we just want to augment downloaded dataset with our distractions
-        env.step(val_dataset['actions'][i])    # Just want to step forward the environment so the next distractor loads
+    val_bar = tqdm(total=MAX_NUM_TRAJECTORIES)
 
 
-        next_obs = env._add_distraction(next_obs)
-        next_observations_val.append(next_obs)
-        
-        # reset so the distractor video resets
-        if val_dataset['terminals'][i]:
-            breakpoint()    # TODO: just here for debugging - remove later
-            break           # TODO: just here for debugging - remove later
-            env.reset()
+    while (val_traj_count < MAX_NUM_TRAJECTORIES):
+        for i, (obs, next_obs) in enumerate((zip(val_dataset['observations'], val_dataset['next_observations']))):
 
-        # For debugging - remove after
-        # if i >= DEBUG_MAX_STEPS:
-        #     break
+            obs = env._add_distraction(obs)
+            observations_val.append(obs)
 
+            # ignore output because we just want to augment downloaded dataset with our distractions
+            env.step(val_dataset['actions'][i])    # Just want to step forward the environment so the next distractor loads
+
+
+            next_obs = env._add_distraction(next_obs)
+            next_observations_val.append(next_obs)
+            
+            # reset so the distractor video resets
+            if val_dataset['terminals'][i]:
+                env.reset()
+                val_traj_count += 1
+                val_bar.update(1)
+                # if val_traj_count >= MAX_NUM_TRAJECTORIES:  # TODO: I just want a small dataset that I can debug
+                #     break  
+
+
+    # TODO: make sure to grab the other fields of the dataset based on how many observations we sampled in the above loop
+    n_val = len(observations_val)
     val_dataset['observations'] = np.array(observations_val)
     val_dataset['next_observations'] = np.array(next_observations_val)
+    for key in val_dataset:
+        if key not in ('observations', 'next_observations'):
+            val_dataset[key] = val_dataset[key][:n_val]
 
 
-    breakpoint()
     assert 'terminals' in val_dataset, "terminals key missing!"
-    assert np.sum(val_dataset['terminals'] == 1) > 0, "No terminals in dataset!"
-    breakpoint()
+    assert np.sum(val_dataset['terminals'] == 1) > 0, "No terminals in val_dataset!"
+
 
     # Save generated distracted dataset
-    output_dir = '/work/10993/rohanpatel01/vista/ogbench/data_gen_scripts/data/distracted_from_downloaded/new'
+    output_dir = '/data/rohanp/ogbench/data_gen_scripts/data/small_bear_distracted_dataset'
     os.makedirs(output_dir, exist_ok=True)
 
 

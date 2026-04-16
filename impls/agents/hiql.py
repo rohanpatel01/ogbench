@@ -342,7 +342,19 @@ class HIQLAgent(flax.struct.PyTreeNode):
             if FLAGS.use_acro_rep:
                 # TODO: DUBIOUS FOR REP
                 # high_actor_encoder_def = GCEncoder(state_encoder=get_encoder_instance(), concat_encoder=get_encoder_instance())
-                high_actor_encoder_def = GCEncoder(acro_encoder=get_encoder_instance(), concat_encoder=get_encoder_instance())
+                # TODO: The below line still gives an issue when we're trying to "use_acro_rep" because concat_encoder is also ACRO
+                #       and thus we will be passing in two different things of different shape to ACRO
+                #       One is during pre-training we just pass in one observation into ACRO's encoder.
+                #       But by setting "concat_encoder=get_encoder_instance()" we will then be doing:
+                #               self.concat_encoder(jnp.concatenate([observations, goals], axis=-1))
+                #       Which is NOT what we want because now ACRO will be taking an input of two observations that are concatenated
+                # high_actor_encoder_def = GCEncoder(acro_encoder=get_encoder_instance(), concat_encoder=get_encoder_instance())
+
+
+                # FIX: concat_encoder=
+                high_actor_encoder_def = GCEncoder(acro_encoder=get_encoder_instance(), concat_encoder=goal_rep_def)
+
+
             else:
                 high_actor_encoder_def = GCEncoder(concat_encoder=encoder_module())
 

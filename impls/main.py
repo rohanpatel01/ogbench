@@ -19,7 +19,7 @@ from utils.env_utils import make_env_and_datasets
 from utils.evaluation import evaluate, evaluate_acro
 from utils.flax_utils import restore_agent, save_agent
 from utils.log_utils import CsvLogger, get_exp_name, get_flag_dict, get_wandb_video, setup_wandb
-
+from utils.trajectory_to_mp4 import sample_trajectories_and_test_mp4
 
 from utils.encoders import get_acro_encoder
 
@@ -251,8 +251,19 @@ def train_loop(agent, train_dataset, val_dataset, config, env, step_offset=0):
         # Evaluate agent. But do not evaluate when we are pre-training the ACRO encoder
 
         if (agent.config['agent_name'] == 'acro') and (i == 1 or i % FLAGS.eval_interval == 0):
+            
+            # breakpoint()
+            # TODO: We should check if we can sample trajectories here
+            # print("Starting evaluation")
+            # sample_trajectories_and_test_mp4(train_dataset)
 
-            evaluate_acro(agent, train_dataset, val_dataset)
+
+
+            # evaluate_acro(agent, train_dataset, val_dataset)
+            pass
+
+
+
 
         elif (i == 1 or i % FLAGS.eval_interval == 0):
 

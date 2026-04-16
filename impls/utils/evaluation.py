@@ -42,7 +42,6 @@ def L2_Rewards_from_acro(acro_agent, train_dataset, val_dataset):
     
     for dataset_name, dataset in [('train', train_dataset), ('val', val_dataset)]:
         
-        breakpoint()
 
         all_l2_distances = []
         
