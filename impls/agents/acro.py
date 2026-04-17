@@ -136,7 +136,7 @@ def get_config():
             # Dataset hyperparameters.
             dataset_class='ACRODataset',  # Dataset class name.
             p_aug=0.0,  # Probability of applying image augmentation.
-            frame_stack=ml_collections.config_dict.placeholder(int),
+            frame_stack=3    #ml_collections.config_dict.placeholder(int),
         )
     )
     return config

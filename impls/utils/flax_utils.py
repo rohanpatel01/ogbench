@@ -171,7 +171,7 @@ def save_agent(agent, save_dir, epoch):
     save_dict = dict(
         agent=flax.serialization.to_state_dict(agent),
     )
-    save_path = os.path.join(save_dir, f'params_{epoch}.pkl')
+    save_path = os.path.join(save_dir, f'{agent.config['agent_name']}_params_{epoch}.pkl')
     with open(save_path, 'wb') as f:
         pickle.dump(save_dict, f)
 

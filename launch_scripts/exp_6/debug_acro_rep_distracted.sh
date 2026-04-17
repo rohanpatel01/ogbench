@@ -11,12 +11,13 @@ export CUDA_VISIBLE_DEVICES=3
 source /data/rohanp/miniconda3/etc/profile.d/conda.sh
 conda activate /data/rohanp/miniconda3/envs/ogbench
 
-# DATASET_PATH_TRAIN=/data/rohanp/ogbench/data_gen_scripts/data/bear_single_distractor_dataset/new/visual-antmaze-medium-stitch-v0-distracted.npz
-# DATASET_PATH_VAL=/data/rohanp/ogbench/data_gen_scripts/data/bear_single_distractor_dataset/new/visual-antmaze-medium-stitch-v0-distracted-val.npz
+# Single distractor bear data
+DATASET_PATH_TRAIN=/data/rohanp/ogbench/data_gen_scripts/data/bear_single_distractor_dataset/new/visual-antmaze-medium-stitch-v0-distracted.npz
+DATASET_PATH_VAL=/data/rohanp/ogbench/data_gen_scripts/data/bear_single_distractor_dataset/new/visual-antmaze-medium-stitch-v0-distracted-val.npz
 
 # Clean data
-DATASET_PATH_TRAIN=/data/rohanp/ogbench/data_gen_scripts/data/clean/visual-antmaze-medium-stitch-v0.npz
-DATASET_PATH_VAL=/data/rohanp/ogbench/data_gen_scripts/data/clean/visual-antmaze-medium-stitch-v0-val.npz
+# DATASET_PATH_TRAIN=/data/rohanp/ogbench/data_gen_scripts/data/clean/visual-antmaze-medium-stitch-v0.npz
+# DATASET_PATH_VAL=/data/rohanp/ogbench/data_gen_scripts/data/clean/visual-antmaze-medium-stitch-v0-val.npz
 
 DAVIS_DATASET_PATH=/data/rohanp/DAVIS/JPEGImages/480p
 STEPS_PRE_TRAIN_ACRO=20000
@@ -30,8 +31,8 @@ cd /data/rohanp/ogbench/impls
 for SEED in 0 1 2; do
     python main.py \
         --seed=$SEED \
-        --exp_name='exp_6_2' \
-        --using_distractions_dataset=0 \
+        --exp_name='exp_6_2_1' \
+        --using_distractions_dataset=1 \
         --steps_pre_train_acro=$STEPS_PRE_TRAIN_ACRO \
         --train_steps=$TRAIN_STEPS \
         --use_acro_rep=1 \
@@ -52,6 +53,7 @@ for SEED in 0 1 2; do
         --log_interval=1 \
         --eval_on_cpu=0 \
         --freeze_acro_rep=0 \
+        --specific_distractor=bear \
         --davis_dataset_path=$DAVIS_DATASET_PATH \
         --dataset_download_dir=/data/rohanp/ogbench/data_gen_scripts/data
 done

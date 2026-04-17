@@ -477,11 +477,14 @@ class ACRODataset:
     def get_observations(self, idxs):
         """Return the observations for the given indices."""
         if self.config['frame_stack'] is None or self.preprocess_frame_stack:
+            # breakpoint()
             return jax.tree_util.tree_map(lambda arr: arr[idxs], self.dataset['observations'])
         else:
+            # breakpoint()
             return self.get_stacked_observations(idxs)
 
     def get_stacked_observations(self, idxs):
+        # breakpoint()
         """Return the frame-stacked observations for the given indices."""
         initial_state_idxs = self.initial_locs[np.searchsorted(self.initial_locs, idxs, side='right') - 1]
         rets = []

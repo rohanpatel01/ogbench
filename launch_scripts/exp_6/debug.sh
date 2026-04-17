@@ -11,6 +11,7 @@ export CUDA_VISIBLE_DEVICES=3
 source /data/rohanp/miniconda3/etc/profile.d/conda.sh
 conda activate /data/rohanp/miniconda3/envs/ogbench
 
+# Single distractor bear data
 # DATASET_PATH_TRAIN=/data/rohanp/ogbench/data_gen_scripts/data/bear_single_distractor_dataset/new/visual-antmaze-medium-stitch-v0-distracted.npz
 # DATASET_PATH_VAL=/data/rohanp/ogbench/data_gen_scripts/data/bear_single_distractor_dataset/new/visual-antmaze-medium-stitch-v0-distracted-val.npz
 
@@ -30,7 +31,7 @@ cd /data/rohanp/ogbench/impls
 for SEED in 0 1 2; do
     python main.py \
         --seed=$SEED \
-        --exp_name='exp_6_2' \
+        --exp_name='debug' \
         --using_distractions_dataset=0 \
         --steps_pre_train_acro=$STEPS_PRE_TRAIN_ACRO \
         --train_steps=$TRAIN_STEPS \
