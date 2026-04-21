@@ -22,7 +22,7 @@ DATASET_PATH_VAL=/data/rohanp/ogbench/data_gen_scripts/data/bear_single_distract
 DAVIS_DATASET_PATH=/data/rohanp/DAVIS/JPEGImages/480p
 STEPS_PRE_TRAIN_ACRO=20000
 # 20000
-TRAIN_STEPS=210000
+TRAIN_STEPS=1
 #210000
 ENV_NAME=visual-antmaze-medium-stitch-v0
 
@@ -31,7 +31,7 @@ cd /data/rohanp/ogbench/impls
 for SEED in 0 1 2; do
     python main.py \
         --seed=$SEED \
-        --exp_name='exp_6_2_1' \
+        --exp_name='pre_train_acro_distracted_single_bear' \
         --using_distractions_dataset=1 \
         --steps_pre_train_acro=$STEPS_PRE_TRAIN_ACRO \
         --train_steps=$TRAIN_STEPS \

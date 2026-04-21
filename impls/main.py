@@ -85,62 +85,50 @@ def main(_):
     config = FLAGS.agent
 
 
-    # if ((FLAGS.dataset_path_train) and (FLAGS.dataset_path_val)): # Use our dataset for training
-    if (FLAGS.use_acro_rep or FLAGS.use_acro_for_reward):
+    data_train = np.load(FLAGS.dataset_path_train)
+    data_val = np.load(FLAGS.dataset_path_val)
+    
+    dataset_class = {
+        'GCDataset': GCDataset,
+        'HGCDataset': HGCDataset,
+        'ACRODataset': ACRODataset,
+    }[config['dataset_class']]
+
+    train_dataset = dict(data_train)
+    val_dataset = dict(data_val)
+
+
+    if (FLAGS.use_acro_rep or FLAGS.use_acro_for_reward or FLAGS.steps_pre_train_acro):
 
         acro_config = acro.get_config()
 
         print("Using specified data")
         env, _, _ = make_env_and_datasets(FLAGS.env_name, frame_stack=config['frame_stack'], dataset_path=FLAGS.dataset_path_train)
 
-        data_train = np.load(FLAGS.dataset_path_train)
-        data_val = np.load(FLAGS.dataset_path_val)
-        train_dataset = dict(data_train)   # keys: observations, actions, rewards, terminals, etc.
-        val_dataset = dict(data_val)           # or split off a slice if you want validation
-        # val_dataset = None # making None because val_dataset has issue where data['terminals'][-1] errors out <-- need to figure out why but in mean time we can just try training with train dataset only
         assert 'terminals' in val_dataset, "terminals key missing!"
         assert np.sum(val_dataset['terminals'] == 1) > 0, "No terminals in dataset!"
 
-        train_dataset_acro = dict(data_train)
-        val_dataset_acro = dict(data_val)
-
-        acro_train_dataset = ACRODataset(Dataset.create(**train_dataset_acro), acro_config)
-        if val_dataset is not None:
-            acro_val_dataset = ACRODataset(Dataset.create(**val_dataset_acro), acro_config)
+        # Create ACRO dataset
+        acro_train_dataset = ACRODataset(Dataset.create(**train_dataset), acro_config)
+        acro_val_dataset = ACRODataset(Dataset.create(**val_dataset), acro_config)
 
     else:
-        # Allow their code to download the dataset corresponding to the specified env_name
-        print("Data NOT specified. Going to use auto-download OGBench data based on env_name")
-        env, train_dataset, val_dataset = make_env_and_datasets(FLAGS.env_name, frame_stack=config['frame_stack'])
+        env, _, _ = make_env_and_datasets(FLAGS.env_name, frame_stack=config['frame_stack'], dataset_path=FLAGS.dataset_path_train)
 
 
 
-    # Create dataset that HIQL will use
-    dataset_class = {
-        'GCDataset': GCDataset,
-        'HGCDataset': HGCDataset,
-        'ACRODataset': ACRODataset,
-    }[config['dataset_class']]
+    # Create dataset for main agent
     train_dataset = dataset_class(Dataset.create(**train_dataset), config)
-    if val_dataset is not None:
-        val_dataset = dataset_class(Dataset.create(**val_dataset), config)
-
-    # breakpoint()
-
-    # train_dataset.sample(1)['observations'].shape    expect this to have 9 channels for HIQL dataset!
+    val_dataset = dataset_class(Dataset.create(**val_dataset), config)
 
 
-    # Make sure to use distracted env if we are training on the distraction dataset
-    # This is important because we need the observation space to match that of the data we're using
     if (FLAGS.using_distractions_dataset):
         env = ImageDistractionWrapper(
             env,
-            # distracting_images_dir='/work/10993/rohanpatel01/vista/DAVIS/JPEGImages/480p/',
             distracting_images_dir=FLAGS.davis_dataset_path,
             specific_distractor=FLAGS.specific_distractor,
         )
 
-    # acro_val_dataset = None
 
     # Initialize agent.
     random.seed(FLAGS.seed)
@@ -149,7 +137,7 @@ def main(_):
     # Pre-train ACRO
     if FLAGS.use_acro_for_reward or FLAGS.use_acro_rep:
         acro_config = acro.get_config()
-        example_batch = acro_train_dataset.sample(1)    # was train_dataset
+        example_batch = acro_train_dataset.sample(1)
 
         # breakpoint()
         if config['discrete']:
@@ -177,10 +165,6 @@ def main(_):
         acro_encoder = None
 
 
-    # Done Pre-training ACRO, Run actual algorithm
-
-    # Pass in ACRO's encoder to the algorithm we want to run
-    # ex: HIQL
     example_batch = train_dataset.sample(1)
 
     if config['discrete']:
@@ -253,24 +237,7 @@ def train_loop(agent, train_dataset, val_dataset, config, env, step_offset=0):
             train_logger.log(train_metrics, step=global_step)
 
         # Evaluate agent. But do not evaluate when we are pre-training the ACRO encoder
-
-        if (agent.config['agent_name'] == 'acro') and (i == 1 or i % FLAGS.eval_interval == 0):
-            
-            # breakpoint()
-            # TODO: We should check if we can sample trajectories here
-            # print("Starting evaluation")
-            # sample_trajectories_and_test_mp4(train_dataset)
-            sample_trajectories_and_test_mp4(train_dataset) # train_dataset = ACRODataset instance
-            # breakpoint()
-
-
-            # evaluate_acro(agent, train_dataset, val_dataset)
-            # pass
-
-
-
-
-        elif (i == 1 or i % FLAGS.eval_interval == 0):
+        if (i == 1 or i % FLAGS.eval_interval == 0):
 
             if FLAGS.eval_on_cpu:
                 eval_agent = jax.device_put(agent, device=jax.devices('cpu')[0])

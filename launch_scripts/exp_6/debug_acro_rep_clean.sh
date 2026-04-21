@@ -20,10 +20,12 @@ DATASET_PATH_TRAIN=/data/rohanp/ogbench/data_gen_scripts/data/clean/visual-antma
 DATASET_PATH_VAL=/data/rohanp/ogbench/data_gen_scripts/data/clean/visual-antmaze-medium-stitch-v0-val.npz
 
 DAVIS_DATASET_PATH=/data/rohanp/DAVIS/JPEGImages/480p
-STEPS_PRE_TRAIN_ACRO=20000
+STEPS_PRE_TRAIN_ACRO=1
 # 20000
-TRAIN_STEPS=210000
+TRAIN_STEPS=1
 #210000
+EVAL_INTERVAL=1
+# 25000
 ENV_NAME=visual-antmaze-medium-stitch-v0
 
 cd /data/rohanp/ogbench/impls
@@ -31,13 +33,14 @@ cd /data/rohanp/ogbench/impls
 for SEED in 0 1 2; do
     python main.py \
         --seed=$SEED \
-        --exp_name='exp_6_2_1' \
+        --exp_name='debug_blaaahhhh' \
         --using_distractions_dataset=0 \
         --steps_pre_train_acro=$STEPS_PRE_TRAIN_ACRO \
         --train_steps=$TRAIN_STEPS \
         --use_acro_rep=1 \
         --use_acro_for_reward=0 \
-        --eval_interval=25000 \
+        --eval_interval=$EVAL_INTERVAL \
+        --eval_episodes=1 \
         --save_interval=25000 \
         --dataset_path_train=$DATASET_PATH_TRAIN \
 		--dataset_path_val=$DATASET_PATH_VAL \
