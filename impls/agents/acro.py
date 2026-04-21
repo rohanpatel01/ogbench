@@ -21,16 +21,16 @@ class ACROAgent(flax.struct.PyTreeNode):
     @jax.jit
     def loss(self, batch, grad_params, rng=None):
         """Compute the total loss."""
-
+        # breakpoint()
         obs_t = batch['observations_t']
         obs_t_k = batch['observations_t_k']
         actions_t = batch['actions_t']
 
         z_t = self.network.select('encoder')(obs_t, params=grad_params)
         z_t_k = self.network.select('encoder')(obs_t_k, params=grad_params)
-
+        # breakpoint()
         action_preds = self.network.select('inverse_dynamics')(jnp.concatenate([z_t, z_t_k], axis=-1), params=grad_params)
-
+        # breakpoint()
         # losses
         info = {}
         loss = 0
@@ -85,7 +85,11 @@ class ACROAgent(flax.struct.PyTreeNode):
 
         action_dim = ex_actions.shape[-1]
 
-        ex_acro_pred_input = jnp.zeros((1, 2 * config['rep_dim']))
+        # breakpoint()
+        encoder_def = encoder_modules["impala_small"]()
+        dummy_vars = encoder_def.init(init_rng, ex_observations)
+        actual_rep_dim = encoder_def.apply(dummy_vars, ex_observations).shape[-1]
+        ex_acro_pred_input = jnp.zeros((1, 2 * actual_rep_dim))
 
 
         # Define networks

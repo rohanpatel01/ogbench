@@ -135,7 +135,7 @@ def main(_):
     np.random.seed(FLAGS.seed)
 
     # Pre-train ACRO
-    if FLAGS.use_acro_for_reward or FLAGS.use_acro_rep:
+    if FLAGS.use_acro_rep or FLAGS.use_acro_for_reward or FLAGS.steps_pre_train_acro:
         acro_config = acro.get_config()
         example_batch = acro_train_dataset.sample(1)
 
@@ -149,6 +149,7 @@ def main(_):
         # Load pretrained ACRO
         # TODO: Note just pulling the acro_config will only load the deafult values we see in acro.py:get_config()
         #       rather than pulling whatever values we would've overriden. So we need to come back and fix this
+        # breakpoint()
         acro_agent = ACROAgent.create(FLAGS.seed, example_batch['observations'], example_batch['actions'], acro_config)
 
         if FLAGS.acro_restore_path:
@@ -193,7 +194,8 @@ def main(_):
         agent = restore_agent(agent, FLAGS.restore_path, FLAGS.restore_epoch)
 
     # train HIQL
-    if FLAGS.use_acro_for_reward or FLAGS.use_acro_rep:
+    # TODO: In the future for all instances where we check this if condition we also need to add something like "or FLAGS.acro_save_path!=None"
+    if FLAGS.use_acro_rep or FLAGS.use_acro_for_reward or FLAGS.steps_pre_train_acro:
         train_loop(agent, train_dataset, val_dataset, config, env, step_offset=FLAGS.steps_pre_train_acro)
     else:
         train_loop(agent, train_dataset, val_dataset, config, env)
@@ -237,7 +239,7 @@ def train_loop(agent, train_dataset, val_dataset, config, env, step_offset=0):
             train_logger.log(train_metrics, step=global_step)
 
         # Evaluate agent. But do not evaluate when we are pre-training the ACRO encoder
-        if (i == 1 or i % FLAGS.eval_interval == 0):
+        if (agent.config['agent_name'] != 'acro') and (i == 1 or i % FLAGS.eval_interval == 0):
 
             if FLAGS.eval_on_cpu:
                 eval_agent = jax.device_put(agent, device=jax.devices('cpu')[0])
