@@ -26,7 +26,7 @@ print(f"Number of episodes to process: {len(episode_ends)}")
 
 start_idx = 0
 
-MAX_VIDEOS = 10
+MAX_VIDEOS = 1
 count_videos_generated = 0
 for i, end_idx in enumerate(episode_ends):
 

@@ -30,9 +30,9 @@ flags.DEFINE_string('restore_path', None, 'Restore path.')
 flags.DEFINE_integer('restore_epoch', None, 'Restore epoch.')
 
 flags.DEFINE_integer('train_steps', 1000000, 'Number of training steps.')
-flags.DEFINE_integer('log_interval', 5000, 'Logging interval.')
-flags.DEFINE_integer('eval_interval', 100000, 'Evaluation interval.')
-flags.DEFINE_integer('save_interval', 1000000, 'Saving interval.')
+flags.DEFINE_integer('log_interval', 1, 'Logging interval.')
+flags.DEFINE_integer('eval_interval', 25000, 'Evaluation interval.')
+flags.DEFINE_integer('save_interval', 25000, 'Saving interval.')
 
 flags.DEFINE_integer('eval_tasks', None, 'Number of tasks to evaluate (None for all).')
 flags.DEFINE_integer('eval_episodes', 20, 'Number of episodes for each task.')
@@ -40,7 +40,7 @@ flags.DEFINE_float('eval_temperature', 0, 'Actor temperature for evaluation.')
 flags.DEFINE_float('eval_gaussian', None, 'Action Gaussian noise for evaluation.')
 flags.DEFINE_integer('video_episodes', 1, 'Number of video episodes for each task.')
 flags.DEFINE_integer('video_frame_skip', 3, 'Frame skip for videos.')
-flags.DEFINE_integer('eval_on_cpu', 1, 'Whether to evaluate on CPU.')
+flags.DEFINE_integer('eval_on_cpu', 0, 'Whether to evaluate on CPU.')
 
 config_flags.DEFINE_config_file('agent', 'agents/gciql.py', lock_config=False)
 
@@ -74,8 +74,8 @@ def main(_):
         data_train = np.load(FLAGS.dataset_path_train)
         data_val = np.load(FLAGS.dataset_path_val)
         train_dataset = dict(data_train)   # keys: observations, actions, rewards, terminals, etc.
-        # val_dataset = dict(data_val)           # or split off a slice if you want validation
-        val_dataset = None # making None because val_dataset has issue where data['terminals'][-1] errors out <-- need to figure out why but in mean time we can just try training with train dataset only
+        val_dataset = dict(data_val)           # or split off a slice if you want validation
+        # val_dataset = None # making None because val_dataset has issue where data['terminals'][-1] errors out <-- need to figure out why but in mean time we can just try training with train dataset only
 
     else:
         # Allow their code to download the dataset corresponding to the specified env_name
@@ -89,7 +89,7 @@ def main(_):
     if (FLAGS.using_distractions_dataset):
         env = ImageDistractionWrapper(
             env,
-            distracting_images_dir='/work/10993/rohanpatel01/vista/DAVIS/JPEGImages/480p/',
+            distracting_images_dir='/data/rohanp/480p',
         )
     
 

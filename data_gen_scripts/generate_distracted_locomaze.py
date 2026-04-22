@@ -78,14 +78,14 @@ def main(_):
                 distracted_envs = {
                     'left': ImageDistractionWrapper(
                                 env,
-                                distracting_images_dir='/work/10993/rohanpatel01/vista/DAVIS/JPEGImages/480p/',
+                                distracting_images_dir='/data/rohanp/480p/',
                                 difficulty=FLAGS.distraction_difficulty,
-                                specific_distractor='bear'
+                                specific_distractor='dog'
                             ),
 
                     'right': ImageDistractionWrapper(
                                 env,
-                                distracting_images_dir='/work/10993/rohanpatel01/vista/DAVIS/JPEGImages/480p/',
+                                distracting_images_dir='/data/rohanp/480p/',
                                 difficulty=FLAGS.distraction_difficulty,
                                 specific_distractor='dog'
                             )

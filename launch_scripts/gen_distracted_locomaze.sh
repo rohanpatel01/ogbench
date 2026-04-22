@@ -1,15 +1,14 @@
 #!bin/bash
 
-export PYTHONPATH=$PYTHONPATH:/work/10993/rohanpatel01/vista/ogbench/impls/
-# export PYTHONPATH=$PYTHONPATH:/work/10993/rohanpatel01/vista/ogbench/ogbench/
-export PYTHONPATH=$PYTHONPATH:/work/10993/rohanpatel01/vista/ogbench/
 
-
-export MUJOCO_GL=egl 
+export WANDB_API_KEY=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
+export PYTHONPATH=$PYTHONPATH:/data/rohanp/ogbench
+export MUJOCO_GL=egl
+export CUDA_VISIBLE_DEVICES=3
 
 
 SAVE_DIR=data/
-SAVE_FILE_NAME=visual-antmaze-medium-stitch-v0-distracted.npz
+SAVE_FILE_NAME=visual-antmaze-medium-stitch-v0-single-distractor-dog.npz
 ENV_NAME=visual-antmaze-medium-v0
 NUM_EPISODES=5000
 SAVE_PERIOD=500
@@ -19,7 +18,7 @@ RESTORE_PATH=/work/10993/rohanpatel01/vista/ogbench/impls/data_gen_scripts/exp/O
 RESTORE_EPOCH=1000000
 
 
-DISTRACTION_IMAGES_DIR=/work/10993/rohanpatel01/vista/DAVIS/JPEGImages/480p
+DISTRACTION_IMAGES_DIR=/data/rohanp/480p
 
 pwd
 cd ../impls/data_gen_scripts

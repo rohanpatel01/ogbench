@@ -11,7 +11,7 @@ from ogbench.relabel_utils import add_oracle_reps, relabel_dataset
 
 
 
-DEFAULT_DATASET_DIR = '/work/10993/rohanpatel01/vista/ogbench/data_gen_scripts/data' # Changed to match where my data is.   Orig: ~/.ogbench/data
+DEFAULT_DATASET_DIR = '/data/rohanp/ogbench/data_gen_scripts/data' # Changed to match where my data is.   Orig: ~/.ogbench/data
 DATASET_URL = 'https://rail.eecs.berkeley.edu/datasets/ogbench'
 
 def load_dataset(dataset_path, ob_dtype=np.float32, action_dtype=np.float32, compact_dataset=False, add_info=False):
@@ -192,7 +192,7 @@ def make_env_and_datasets(
     # Load datasets.
     if dataset_path is None:
         dataset_dir = os.path.expanduser(dataset_dir)
-        download_datasets([dataset_name], dataset_dir)
+        # download_datasets([dataset_name], dataset_dir)
         train_dataset_path = os.path.join(dataset_dir, f'{dataset_name}.npz')
         val_dataset_path = os.path.join(dataset_dir, f'{dataset_name}-val.npz')
     else:
