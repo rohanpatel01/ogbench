@@ -454,6 +454,11 @@ class ACRODataset:
         else:
             batch['observations_t_k'] = self.dataset['observations'][np.minimum(idxs + acro_k_step, final_state_idxs)]
 
+        # Apply image augmentation
+        if self.config['p_aug'] is not None:
+            if np.random.rand() < self.config['p_aug']:
+                self.augment(batch, ['observations', 'observations_t_k'])
+
         return {
             'observations': batch['observations'],
             'actions': batch['actions'],
@@ -464,7 +469,7 @@ class ACRODataset:
 
     def augment(self, batch, keys):
         """Apply image augmentation to the given keys."""
-        padding = 3
+        padding = 4 # TODO: See that I changed the padding for pre-training ACRO to 4 from default value of 3 (as to match the ACRO paper)
         batch_size = len(batch[keys[0]])
         crop_froms = np.random.randint(0, 2 * padding + 1, (batch_size, 2))
         crop_froms = np.concatenate([crop_froms, np.zeros((batch_size, 1), dtype=np.int64)], axis=1)

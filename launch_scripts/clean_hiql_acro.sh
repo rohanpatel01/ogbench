@@ -16,9 +16,9 @@ DATASET_PATH_TRAIN=/data/rohanp/ogbench/data_gen_scripts/data/clean/visual-antma
 DATASET_PATH_VAL=/data/rohanp/ogbench/data_gen_scripts/data/clean/visual-antmaze-medium-stitch-v0-val.npz
 
 DAVIS_DATASET_PATH=/data/rohanp/DAVIS/JPEGImages/480p
-STEPS_PRE_TRAIN_ACRO=10
+STEPS_PRE_TRAIN_ACRO=40000
 #40000
-TRAIN_STEPS=10
+TRAIN_STEPS=210000
 # 210000
 ENV_NAME=visual-antmaze-medium-stitch-v0
 
@@ -26,11 +26,11 @@ cd /data/rohanp/ogbench/impls
 
 # For this run we do p_aug = 1.0 in acro.py
 #0 1 2 3
-for SEED in 0; do
+for SEED in 0 1 2 3; do
 
     python main.py \
         --seed=$SEED \
-        --exp_name='clean_hiql_acro_post_ACRO_fix' \
+        --exp_name='clean_hiql_acro_post_ACRO_fix_with_img_aug' \
         --using_distractions_dataset=0 \
         --steps_pre_train_acro=$STEPS_PRE_TRAIN_ACRO \
         --train_steps=$TRAIN_STEPS \
