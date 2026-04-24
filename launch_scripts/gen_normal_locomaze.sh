@@ -1,31 +1,27 @@
-#!bin/bash
+#!/bin/bash
 
-export PYTHONPATH=$PYTHONPATH:/work/10993/rohanpatel01/vista/ogbench/impls/
-export PYTHONPATH=$PYTHONPATH:/work/10993/rohanpatel01/vista/ogbench/
+export WANDB_API_KEY=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
+export PYTHONPATH=$PYTHONPATH:/data/rohanp/ogbench
+export PYTHONPATH=$PYTHONPATH:/data/rohanp/ogbench/impls
+
 export MUJOCO_GL=egl
+export CUDA_VISIBLE_DEVICES=3
 
+RESTORE_PATH=/data/rohanp/ogbench/data_gen_scripts/exp/OGBench/ogbench/sd000_20260422_021540
 
-SAVE_DIR=undistracted_data/
+SAVE_DIR=/data/rohanp/ogbench/data_gen_scripts/data/our_ant_policy_clean/
 SAVE_FILE_NAME=visual-antmaze-medium-stitch-v0.npz
-ENV_NAME=visual-antmaze-medium-v0
-NUM_EPISODES=5000
-SAVE_PERIOD=500
 
-MAX_EPISODE_STEPS=201
-RESTORE_PATH=/work/10993/rohanpatel01/vista/ogbench/impls/data_gen_scripts/exp/OGBench/ogbench/sd000_s_626713.0.20260316_183527
-RESTORE_EPOCH=1000000
+cd /data/rohanp/ogbench/data_gen_scripts
 
+# visual-antmaze-medium-stitch-v0
+python generate_locomaze.py \
+    --env_name=visual-antmaze-medium-v0 \
+    --save_dir=$SAVE_DIR \
+    --save_file_name=$SAVE_FILE_NAME \
+    --dataset_type=stitch \
+    --num_episodes=5000 \
+    --max_episode_steps=201 \
+    --restore_path=$RESTORE_PATH \
+    --restore_epoch=400000
 
-pwd
-cd ../impls/data_gen_scripts
-
-python generate_locomaze.py\
-    --env_name=$ENV_NAME\
-    --dataset_type=stitch\
-    --num_episodes=$NUM_EPISODES\
-    --max_episode_steps=$MAX_EPISODE_STEPS\
-    --restore_path=$RESTORE_PATH\
-    --restore_epoch=$RESTORE_EPOCH\
-    --save_dir=$SAVE_DIR\
-    --save_period=$SAVE_PERIOD\
-    --save_file_name=$SAVE_FILE_NAME

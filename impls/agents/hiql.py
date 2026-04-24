@@ -10,7 +10,7 @@ from utils.encoders import GCEncoder, encoder_modules
 from utils.flax_utils import ModuleDict, TrainState, nonpytree_field
 from utils.networks import MLP, GCActor, GCDiscreteActor, GCValue, Identity, LengthNormalize
 # from main import FLAGS
-
+import copy
 from absl import flags
 FLAGS = flags.FLAGS
 
@@ -317,45 +317,31 @@ class HIQLAgent(flax.struct.PyTreeNode):
             # Pixel-based environments require visual encoders for state inputs, in addition to the pre-defined shared
             # encoder for subgoal representations.
 
-
-            # Note: We need to check whether we're using ACRO because if so we need to pass (not instantiate) in the ACRO encoder,
-            #       Otherwise we need to instantiate the default encoder
-            def get_encoder_instance():
-                if FLAGS.use_acro_rep:
-                    return encoder_module   # Use existing ACRO network
-                else:
-                    return encoder_module() # Instantiate encoder that is defined in config
-
-            if FLAGS.use_acro_rep:
-                acro_enc = encoder_module
-            else:
-                acro_enc = None
-
-            # Value: V(encoder^V(s), phi([s; g]))
-            value_encoder_def = GCEncoder(state_encoder=get_encoder_instance(), concat_encoder=goal_rep_def, acro_encoder=acro_enc)
-            target_value_encoder_def = GCEncoder(state_encoder=get_encoder_instance(), concat_encoder=goal_rep_def, acro_encoder=acro_enc)
-            # Low-level actor: pi^l(. | encoder^l(s), phi([s; w]))
-            low_actor_encoder_def = GCEncoder(state_encoder=get_encoder_instance(), concat_encoder=goal_rep_def, acro_encoder=acro_enc)
-
             # High-level actor: pi^h(. | encoder^h([s; g]))
-            # Note: I added the state_encoder just so we can pass the ACROEncoder so we can encode the observations and goals.
             if FLAGS.use_acro_rep:
-                # TODO: DUBIOUS FOR REP
-                # high_actor_encoder_def = GCEncoder(state_encoder=get_encoder_instance(), concat_encoder=get_encoder_instance())
-                # TODO: The below line still gives an issue when we're trying to "use_acro_rep" because concat_encoder is also ACRO
-                #       and thus we will be passing in two different things of different shape to ACRO
-                #       One is during pre-training we just pass in one observation into ACRO's encoder.
-                #       But by setting "concat_encoder=get_encoder_instance()" we will then be doing:
-                #               self.concat_encoder(jnp.concatenate([observations, goals], axis=-1))
-                #       Which is NOT what we want because now ACRO will be taking an input of two observations that are concatenated
-                # high_actor_encoder_def = GCEncoder(acro_encoder=get_encoder_instance(), concat_encoder=get_encoder_instance())
+
+                value_acro_enc          = copy.deepcopy(acro_encoder)
+                target_value_acro_enc   = copy.deepcopy(acro_encoder)
+                low_actor_acro_enc      = copy.deepcopy(acro_encoder)
+                high_actor_acro_enc     = copy.deepcopy(acro_encoder)
 
 
-                # FIX: concat_encoder=
-                high_actor_encoder_def = GCEncoder(acro_encoder=get_encoder_instance(), concat_encoder=goal_rep_def)
+                # Value: V(encoder^V(s), phi([s; g]))
+                value_encoder_def = GCEncoder(state_encoder=value_acro_enc, concat_encoder=goal_rep_def, acro_encoder=value_acro_enc)
+                target_value_encoder_def = GCEncoder(state_encoder=target_value_acro_enc, concat_encoder=goal_rep_def, acro_encoder=target_value_acro_enc)
+                # Low-level actor: pi^l(. | encoder^l(s), phi([s; w]))
+                low_actor_encoder_def = GCEncoder(state_encoder=low_actor_acro_enc, concat_encoder=goal_rep_def, acro_encoder=low_actor_acro_enc)
+
+                high_actor_encoder_def = GCEncoder(acro_encoder=high_actor_acro_enc, concat_encoder=goal_rep_def)
 
 
             else:
+                # Exact same as OGBench original code
+                value_encoder_def = GCEncoder(state_encoder=encoder_module(), concat_encoder=goal_rep_def)
+                target_value_encoder_def = GCEncoder(state_encoder=encoder_module(), concat_encoder=goal_rep_def)
+                # Low-level actor: pi^l(. | encoder^l(s), phi([s; w]))
+                low_actor_encoder_def = GCEncoder(state_encoder=encoder_module(), concat_encoder=goal_rep_def)
+                # High-level actor: pi^h(. | encoder^h([s; g]))
                 high_actor_encoder_def = GCEncoder(concat_encoder=encoder_module())
 
         else:
