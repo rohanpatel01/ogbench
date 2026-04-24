@@ -92,10 +92,12 @@ class ACROAgent(flax.struct.PyTreeNode):
         action_dim = ex_actions.shape[-1]
 
         # breakpoint()
-        encoder_def = encoder_modules["impala_small"]()
-        dummy_vars = encoder_def.init(init_rng, ex_observations)
-        actual_rep_dim = encoder_def.apply(dummy_vars, ex_observations).shape[-1]
-        ex_acro_pred_input = jnp.zeros((1, 2 * actual_rep_dim))
+        # encoder_def = encoder_modules["impala_small"]()
+        # dummy_vars = encoder_def.init(init_rng, ex_observations)
+        # actual_rep_dim = encoder_def.apply(dummy_vars, ex_observations).shape[-1]
+        # ex_acro_pred_input = jnp.zeros((1, 2 * actual_rep_dim))
+        
+        ex_acro_pred_input = jnp.zeros((1, 2 * config['rep_dim']))
 
 
         # Define networks
