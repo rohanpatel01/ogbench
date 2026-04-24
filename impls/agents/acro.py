@@ -40,7 +40,13 @@ class ACROAgent(flax.struct.PyTreeNode):
                 action_preds, actions_t.squeeze(-1)
             ).mean()
         else:
-            action_loss = ((action_preds - actions_t) ** 2).mean()
+            # OLD
+            # action_loss = ((action_preds - actions_t) ** 2).mean()
+
+            # L2-normalize predictions and targets (cosine similarity loss, as in ACRO paper)
+            action_preds = action_preds / (jnp.linalg.norm(action_preds, axis=-1, keepdims=True) + 1e-8)
+            actions_t_norm = actions_t / (jnp.linalg.norm(actions_t, axis=-1, keepdims=True) + 1e-8)
+            action_loss = ((action_preds - actions_t_norm) ** 2).mean()
 
 
         loss += action_loss
@@ -93,14 +99,14 @@ class ACROAgent(flax.struct.PyTreeNode):
 
 
         # Define networks
-        # encoder_def = CNNEncoder(
-        #     output_dim=config['rep_dim'],
-        #     num_conv_filters=config['num_conv_filters'],
-        #     kernel_size=config['kernel_size']
-        # )
+        encoder_def = CNNEncoder(
+            output_dim=config['rep_dim'],
+            num_conv_filters=config['num_conv_filters'],
+            kernel_size=config['kernel_size']
+        )
 
-        # TODO: Use impalla-small encoder because it already works. This may help minimize variables that cause bugs
-        encoder_def = encoder_modules["impala_small"]()
+        # NOTE: Use impalla-small encoder because it already works. This may help minimize variables that cause bugs
+        # encoder_def = encoder_modules["impala_small"]()
 
         inverse_dynamics_def = MLP(
             hidden_dims=(*config['hidden_dims'], action_dim),
@@ -143,7 +149,7 @@ def get_config():
             kernel_size=3,
             # Dataset hyperparameters.
             dataset_class='ACRODataset',  # Dataset class name.
-            p_aug=0.0,  # Probability of applying image augmentation.
+            p_aug=1.0,  # Probability of applying image augmentation.
             frame_stack=ml_collections.config_dict.placeholder(int),
         )
     )

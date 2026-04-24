@@ -23,6 +23,8 @@ SEED=0
 
 cd /data/rohanp/ogbench/impls
 
+# For this run we do p_aug = 1.0 in acro.py
+
 python main.py \
     --seed=$SEED \
     --exp_name='clean_hiql_acro' \
